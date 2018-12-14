@@ -12,6 +12,7 @@ import (
 
 type config struct {
 	AdditionalParams string `env:"additional_params"`
+	ProjectLocation  string `env:"project_location,required"`
 }
 
 func failf(msg string, args ...interface{}) {
@@ -36,7 +37,8 @@ func main() {
 
 	testCmd := command.New("flutter", append([]string{"test"}, additionalParams...)...).
 		SetStdout(os.Stdout).
-		SetStderr(os.Stderr)
+		SetStderr(os.Stderr).
+		SetDir(cfg.ProjectLocation)
 
 	fmt.Println()
 	log.Donef("$ %s", testCmd.PrintableCommandArgs())
