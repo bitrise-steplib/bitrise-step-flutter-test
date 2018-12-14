@@ -12,7 +12,7 @@ import (
 
 type config struct {
 	AdditionalParams string `env:"additional_params"`
-	ProjectLocation  string `env:"project_location,required"`
+	ProjectLocation  string `env:"project_location,dir"`
 }
 
 func failf(msg string, args ...interface{}) {
