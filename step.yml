@@ -30,3 +30,5 @@ inputs:
       title: "Additional parameters"
       summary: "The flags from this input field will be appended to the `flutter test` command."
       description: "The flags from this input field will be appended to the `flutter test` command."
+  - test_output_folder: "$BITRISE_TEST_RESULT_DIR"
+
