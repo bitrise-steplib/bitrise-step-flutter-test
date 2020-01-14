@@ -42,41 +42,7 @@ workflows:
         title: Clone sample app
         inputs:
         - content: git clone $SAMPLE_APP_URL -b manual .
-    - script:
-        title: Adding Dart to path 
-        inputs:
-        - content: export PATH="$PATH":"/usr/local/flutter/bin/cache/dart-sdk/bin"
-    - script:
-        title: Adding pub installed packages to path
-        inputs:
-        - content: export PATH="$PATH":"/usr/local/flutter/.pub-cache/bin"
-    - script:
-        title: Getting flutter dependencies
-        inputs:
-        - content: flutter pub get
-    - script:
-        title: Getting junit report
-        inputs:
-        - content: flutter pub global activate junitreport
-    - flutter-installer:
-    - script:
-          title: Launching tests
-          inputs:
-          - content: flutter test --machine > test_results.jsonl
-    - script: 
-        inputs:
-        - content: cat test_results.jsonl
-    - script:
-        title: Converting to jUnit
-        inputs:
-        - content: |-
-            #!/bin/bash
-            cat test_results.jsonl
-            tojunit -i test_results.jsonl -o $BITRISE_TEST_RESULT_DIR/TEST-result.xml
-    - script:
-        title: Generating test-info.json
-        inputs:
-        - content: echo "{\"test-name\":\"tests-batch-1\"}" >> $BITRISE_TEST_RESULT_DIR/test-info.json
+    - path::./:
 
   # ----------------------------------------------------------------
   # --- workflows to Share this step into a Step Library
