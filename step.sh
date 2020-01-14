@@ -13,6 +13,6 @@ mkdir "$test_run_dir"
 
 flutter test --machine > test_results.jsonl
 tojunit -i test_results.jsonl -o $test_run_dir/TEST-report.xml
-echo '{"test-name":"tests-batch-1"}' >> "$test_run_dir/test-info.json"
+echo "{\"test-name\":\"$test_run_name\"}" >> "$test_run_dir/test-info.json"
 
 
