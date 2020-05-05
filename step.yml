@@ -1,6 +1,31 @@
-title: Flutter Test
-summary: This step will run tests in a Flutter project
-description: This step will run tests in a Flutter project
+title: "Flutter Test"
+summary: |-
+ Performs any test in a Flutter project.
+
+description: |-
+
+If you have tests in your repository, and selected `yes` when prompted during app creation, the primary Workflow will include the **Flutter Test** Step by default. 
+If you add tests to your app later, add the **Flutter Test** Step to your Workflow manually. The Step runs the `flutter test` command with the specified flags. To check the available flags, open a command line interface on your own machine and run `flutter test --help`.
+
+  ### Configuring the Step
+  This Step has only two inputs to configure.
+  1. Provide your project's root directory in the **Project Location** field.
+  2. You can append additional flags to the default `flutter test` command in the **Additional parameters** field.
+
+
+  ### Troubleshooting
+  Make sure the **Project Location** input of the Flutter Test Step is correct. 
+  The default value is the Environment Variable (Env Var) created for your Flutter project’s location.
+
+
+  ### Useful links
+  - [Getting started with Flutter](https://devcenter.bitrise.io/getting-started/getting-started-with-flutter-apps/)
+  - [About testing](https://devcenter.bitrise.io/testing/testing-index/)
+
+  ### Related Steps
+  - [Flutter Build](https://www.bitrise.io/integrations/steps/flutter-build)
+  - [Flutter Analyze](https://www.bitrise.io/integrations/steps/flutter-analyze)
+
 website: https://github.com/bitrise-steplib/bitrise-step-flutter-test
 source_code_url: https://github.com/bitrise-steplib/bitrise-step-flutter-test
 support_url: https://github.com/bitrise-steplib/bitrise-step-flutter-test/issues
