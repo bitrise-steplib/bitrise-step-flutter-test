@@ -2,7 +2,9 @@ package main
 
 import (
 	"fmt"
+	"io"
 	"os"
+	"os/exec"
 
 	"github.com/bitrise-io/go-utils/command"
 	"github.com/bitrise-io/go-utils/log"
@@ -24,7 +26,7 @@ func failf(msg string, args ...interface{}) {
 
 func main() {
 	const TestName = "Flutter test results"
-	const TestResultFileName = "flutter_junit_test_results.xml"
+	const TestResultFileName = "./flutter_junit_test_results.xml"
 	var cfg config
 	if err := stepconf.Parse(&cfg); err != nil {
 		failf("Issue with input: %s", err)
@@ -39,22 +41,48 @@ func main() {
 	fmt.Println()
 	log.Infof("Running test")
 
-	testCmd := command.New("flutter", append([]string{"test", "--machine | tojunit --output", TestResultFileName}, additionalParams...)...).
+	pr, pw := io.Pipe()
+
+	testCmd := exec.Command("flutter", append([]string{"test", "--machine"}, additionalParams...)...)
+	junitCmd := exec.Command("tojunit", append([]string{"--output", TestResultFileName})...)
+
+	testCmdModel := command.NewWithCmd(testCmd).
+		SetStdout(pw).
+		SetStderr(os.Stderr).
+		SetDir(cfg.ProjectLocation)
+
+	command.NewWithCmd(junitCmd).
+		SetStdin(pr).
 		SetStdout(os.Stdout).
 		SetStderr(os.Stderr).
 		SetDir(cfg.ProjectLocation)
 
 	fmt.Println()
-	log.Donef("$ %s", testCmd.PrintableCommandArgs())
+	log.Donef("$ %s", testCmdModel.PrintableCommandArgs())
 	fmt.Println()
 
-	output, err := testCmd.RunAndReturnTrimmedOutput()
-	if err != nil {
+	if err := testCmd.Start(); err != nil {
 		failf("Running command failed, error: %s", err)
 	}
 
+	if err := junitCmd.Start(); err != nil {
+		failf("Converting test results to junit format failed, error: %s", err)
+	}
+
+	if err := testCmd.Wait(); err != nil {
+		failf("Completing test command failed, error: %s", err)
+	}
+
+	if err := pw.Close(); err != nil {
+		failf("Closing pipe failed, error: %s", err)
+	}
+
+	if err := junitCmd.Wait(); err != nil {
+		failf("Completing conversion command failed, error: %s", err)
+	}
+
 	exporter := testresultexport.NewExporter(cfg.TestResultsDir)
-	if err := exporter.ExportTest(TestName, output); err != nil {
+	if err := exporter.ExportTest(TestName, TestResultFileName); err != nil {
 		failf("Failed to export test result: %s", err)
 	}
 }
