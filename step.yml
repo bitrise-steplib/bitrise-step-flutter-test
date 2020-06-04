@@ -25,6 +25,11 @@ inputs:
       summary: "The root dir of your Flutter project."
       description: "The root dir of your Flutter project."
       is_required: true
+  - bitrise_test_result_dir: $BITRISE_TEST_RESULT_DIR
+    opts:
+      title: Step's test result directory
+      description: Root directory for all test results created by the Bitrise CLI
+      is_required: true
   - additional_params: 
     opts:
       title: "Additional parameters"
