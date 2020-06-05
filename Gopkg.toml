@@ -1,5 +1,5 @@
 [[constraint]]
-  branch = "TOOL-2241-move-testresultexport-to-separate-lib"
+  branch = "master"
   name = "github.com/bitrise-io/testresultexport"
 
 [[constraint]]
