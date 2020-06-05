@@ -43,6 +43,17 @@ func main() {
 
 	pr, pw := io.Pipe()
 
+	if _, err := exec.LookPath("tojunit"); err != nil {
+		log.Infof("Command `tojunit` not found, installing...")
+		junitInstallCmd := command.New("flutter", append([]string{"pub", "global", "activate", "junitreport"})...).
+			SetStdout(os.Stdout).
+			SetStderr(os.Stderr).
+			SetDir(cfg.ProjectLocation)
+		if err := junitInstallCmd.Run(); err != nil {
+			failf("Command `tojunit` failed to install, error: %s", err)
+		}
+	}
+
 	testCmd := exec.Command("flutter", append([]string{"test", "--machine"}, additionalParams...)...)
 	junitCmd := exec.Command("tojunit", append([]string{"--output", TestResultFileName})...)
 
@@ -85,4 +96,6 @@ func main() {
 	if err := exporter.ExportTest(TestName, TestResultFileName); err != nil {
 		failf("Failed to export test result: %s", err)
 	}
+
+	log.Infof("test results exported in junit format successfully")
 }
