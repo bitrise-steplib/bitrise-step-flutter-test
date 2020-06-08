@@ -7,6 +7,7 @@ import (
 	"os/exec"
 
 	"github.com/bitrise-io/go-utils/command"
+	"github.com/bitrise-io/go-utils/errorutil"
 	"github.com/bitrise-io/go-utils/log"
 	"github.com/bitrise-io/testresultexport/testresultexport"
 	"github.com/bitrise-tools/go-steputils/stepconf"
@@ -49,8 +50,16 @@ func main() {
 			SetStdout(os.Stdout).
 			SetStderr(os.Stderr).
 			SetDir(cfg.ProjectLocation)
+
+		fmt.Println()
+		log.Donef(fmt.Sprintf("$ %s", junitInstallCmd.PrintableCommandArgs()))
+		fmt.Println()
+
 		if err := junitInstallCmd.Run(); err != nil {
-			failf("Command `tojunit` failed to install, error: %s", err)
+			if errorutil.IsExitStatusError(err) {
+				failf("Command `tojunit` failed to install, error: %s", err)
+			}
+			failf("Failed to run command `tojunit`, %s", err)
 		}
 	}
 
