@@ -30,6 +30,7 @@ inputs:
       title: Step's test result directory
       description: Root directory for all test results created by the Bitrise CLI
       is_required: true
+      is_dont_change_value: true
   - additional_params: 
     opts:
       title: "Additional parameters"

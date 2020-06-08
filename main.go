@@ -26,8 +26,8 @@ func failf(msg string, args ...interface{}) {
 }
 
 func main() {
-	const TestName = "Flutter test results"
-	const TestResultFileName = "./flutter_junit_test_results.xml"
+	const testName = "Flutter test results"
+	const testResultFileName = "./flutter_junit_test_results.xml"
 	var cfg config
 	if err := stepconf.Parse(&cfg); err != nil {
 		failf("Issue with input: %s", err)
@@ -64,7 +64,7 @@ func main() {
 	}
 
 	testCmd := exec.Command("flutter", append([]string{"test", "--machine"}, additionalParams...)...)
-	junitCmd := exec.Command("tojunit", append([]string{"--output", TestResultFileName})...)
+	junitCmd := exec.Command("tojunit", append([]string{"--output", testResultFileName})...)
 
 	testCmdModel := command.NewWithCmd(testCmd).
 		SetStdout(pw).
@@ -102,7 +102,7 @@ func main() {
 	}
 
 	exporter := testresultexport.NewExporter(cfg.TestResultsDir)
-	if err := exporter.ExportTest(TestName, TestResultFileName); err != nil {
+	if err := exporter.ExportTest(testName, testResultFileName); err != nil {
 		failf("Failed to export test result: %s", err)
 	}
 
