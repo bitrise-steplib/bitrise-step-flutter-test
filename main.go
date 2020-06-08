@@ -71,14 +71,14 @@ func main() {
 		SetStderr(os.Stderr).
 		SetDir(cfg.ProjectLocation)
 
-	command.NewWithCmd(junitCmd).
+	junitCmdModel := command.NewWithCmd(junitCmd).
 		SetStdin(pr).
 		SetStdout(os.Stdout).
 		SetStderr(os.Stderr).
 		SetDir(cfg.ProjectLocation)
 
 	fmt.Println()
-	log.Donef("$ %s", testCmdModel.PrintableCommandArgs())
+	log.Donef("$ %s | %s", testCmdModel.PrintableCommandArgs(), junitCmdModel.PrintableCommandArgs())
 	fmt.Println()
 
 	if err := testCmd.Start(); err != nil {
