@@ -80,7 +80,7 @@ workflows:
             #!/bin/bash
             set -ex
             echo "Checking for JUNIT output"
-            if [ -f "$BITRISE_TEST_RESULT_DIR/Flutter\ test\ results/flutter_junit_test_results.xml" ]; then
+            if ls $BITRISE_TEST_RESULT_DIR/../*/Flutter\ test\ results/flutter_junit_test_results.xml 1> /dev/null 2>&1; then
               echo "JUNIT data exists."
             else
               echo "JUNIT data does not exist."

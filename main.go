@@ -82,14 +82,7 @@ func main() {
 		}
 	}
 
-	testArguments := []string{"test", "--machine"}
-	if cfg.GenerateCodeCoverageFiles {
-		log.Infof("Enabling coverage data generation")
-		testArguments = append(testArguments, "--coverage")
-	}
-	testArguments = append(testArguments, additionalParams...)
-
-	testCmd := exec.Command("flutter", testArguments...)
+	testCmd := exec.Command("flutter", append([]string{"test", "--machine"}, additionalParams...)...)
 	junitCmd := exec.Command("tojunit", append([]string{"--output", testResultFileName})...)
 
 	testCmdModel := command.NewWithCmd(testCmd).
@@ -133,19 +126,16 @@ func main() {
 	}
 
 	if cfg.GenerateCodeCoverageFiles {
-		// workaround for flutter bug where coverage+machine does not work together
-		if _, err := os.Stat(coveragePath); os.IsNotExist(err) {
-			coverageCmdModel := command.New("flutter", append([]string{"test", "--coverage"}, additionalParams...)...)
+		coverageCmdModel := command.New("flutter", append([]string{"test", "--coverage"}, additionalParams...)...)
 
-			fmt.Println()
-			log.Infof("Rerunning test command to generate coverage data")
-			fmt.Println()
-			log.Donef("$ %s", coverageCmdModel.PrintableCommandArgs())
-			fmt.Println()
+		fmt.Println()
+		log.Infof("Rerunning test command to generate coverage data")
+		fmt.Println()
+		log.Donef("$ %s", coverageCmdModel.PrintableCommandArgs())
+		fmt.Println()
 
-			if err := coverageCmdModel.Run(); err != nil {
-				failf("Completing coverage command failed, error: %s", err)
-			}
+		if err := coverageCmdModel.Run(); err != nil {
+			failf("Completing coverage command failed, error: %s", err)
 		}
 
 		coverageDeployPath := copyCoverageInfo(coveragePath, coverageFileName)
