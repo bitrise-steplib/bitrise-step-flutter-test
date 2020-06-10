@@ -22,6 +22,7 @@ workflows:
   test:
     steps:
     - script:
+        title: Delete _tmp
         inputs:
         - content: |-
             #!/bin/bash
@@ -47,6 +48,27 @@ workflows:
     - flutter-installer:
     - path::./:
         title: Run without code coverage
+    - script:
+        title: Check for JUNIT output
+        inputs:
+        - content: |-
+            #!/bin/bash
+            set -ex
+            echo "Checking for JUNIT output"
+            if ls $BITRISE_TEST_RESULT_DIR/../*/Flutter\ test\ results/flutter_junit_test_results.xml 1> /dev/null 2>&1; then
+              echo "JUNIT data exists."
+            else
+              echo "JUNIT data does not exist."
+              exit 1
+            fi
+
+            echo "Checking for coverage data at $BITRISE_FLUTTER_COVERAGE_PATH"
+            if [ -f "$BITRISE_FLUTTER_COVERAGE_PATH" ]; then
+              echo "Coverage data exists."
+              exit 1
+            else
+              echo "Coverage data does not exist as expected."
+            fi
     - path::./:
         title: Run generating code coverage
         inputs:
@@ -58,7 +80,6 @@ workflows:
             #!/bin/bash
             set -ex
             echo "Checking for JUNIT output"
-            ls /var/folders/2d/y8t5pxg56m7fzq107z1jcmh80000gn/T/test_results395136266/test_result480262132/
             if [ -f "$BITRISE_TEST_RESULT_DIR/Flutter\ test\ results/flutter_junit_test_results.xml" ]; then
               echo "JUNIT data exists."
             else
@@ -73,8 +94,6 @@ workflows:
               echo "Coverage data does not exist."
               exit 1
             fi
-
-
 
   # ----------------------------------------------------------------
   # --- workflows to Share this step into a Step Library
