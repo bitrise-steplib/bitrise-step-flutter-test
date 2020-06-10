@@ -5,19 +5,22 @@ import (
 	"io"
 	"os"
 	"os/exec"
+	"path/filepath"
 
 	"github.com/bitrise-io/go-utils/command"
 	"github.com/bitrise-io/go-utils/errorutil"
 	"github.com/bitrise-io/go-utils/log"
 	"github.com/bitrise-io/testresultexport/testresultexport"
 	"github.com/bitrise-tools/go-steputils/stepconf"
+	"github.com/bitrise-tools/go-steputils/tools"
 	shellquote "github.com/kballard/go-shellquote"
 )
 
 type config struct {
-	AdditionalParams string `env:"additional_params"`
-	ProjectLocation  string `env:"project_location,dir"`
-	TestResultsDir   string `env:"bitrise_test_result_dir,dir"`
+	AdditionalParams          string `env:"additional_params"`
+	ProjectLocation           string `env:"project_location,dir"`
+	TestResultsDir            string `env:"bitrise_test_result_dir,dir"`
+	GenerateCodeCoverageFiles bool   `env:"generate_code_coverage_files,opt[yes,no]"`
 }
 
 func failf(msg string, args ...interface{}) {
@@ -25,9 +28,25 @@ func failf(msg string, args ...interface{}) {
 	os.Exit(1)
 }
 
+func copyCoverageInfo(logPth string, logFileName string) string {
+	deployDir := os.Getenv("BITRISE_DEPLOY_DIR")
+	if deployDir == "" {
+		failf("no BITRISE_DEPLOY_DIR found")
+	}
+	deployPth := filepath.Join(deployDir, logFileName)
+
+	if err := command.CopyFile(logPth, deployPth); err != nil {
+		failf("failed to copy code coverage output info file from (%s) to (%s), error: %s", logPth, deployPth, err)
+	}
+	return deployPth
+}
+
 func main() {
 	const testName = "Flutter test results"
 	const testResultFileName = "./flutter_junit_test_results.xml"
+	const coveragePath = "./coverage/lcov.info"
+	const coverageFileName = "flutter_coverage_lcov.info"
+
 	var cfg config
 	if err := stepconf.Parse(&cfg); err != nil {
 		failf("Issue with input: %s", err)
@@ -104,6 +123,25 @@ func main() {
 	exporter := testresultexport.NewExporter(cfg.TestResultsDir)
 	if err := exporter.ExportTest(testName, testResultFileName); err != nil {
 		failf("Failed to export test result: %s", err)
+	}
+
+	if cfg.GenerateCodeCoverageFiles {
+		coverageCmdModel := command.New("flutter", append([]string{"test", "--coverage"}, additionalParams...)...)
+
+		fmt.Println()
+		log.Infof("Rerunning test command to generate coverage data")
+		fmt.Println()
+		log.Donef("$ %s", coverageCmdModel.PrintableCommandArgs())
+		fmt.Println()
+
+		if err := coverageCmdModel.Run(); err != nil {
+			failf("Completing coverage command failed, error: %s", err)
+		}
+
+		coverageDeployPath := copyCoverageInfo(coveragePath, coverageFileName)
+		if err := tools.ExportEnvironmentWithEnvman("BITRISE_FLUTTER_COVERAGE_PATH", coverageDeployPath); err != nil {
+			failf("Failed to export: BITRISE_FLUTTER_COVERAGE_PATH, error: %s", err)
+		}
 	}
 
 	log.Infof("test results exported in junit format successfully")

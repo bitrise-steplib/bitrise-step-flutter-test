@@ -46,6 +46,34 @@ workflows:
         - content: git clone $SAMPLE_APP_URL -b manual .
     - flutter-installer:
     - path::./:
+        title: Run without code coverage
+    - path::./:
+        title: Run generating code coverage
+        inputs:
+        - generate_code_coverage_files: "yes"
+    - script:
+        title: Test step results
+        inputs:
+        - content: |-
+            #!/bin/bash
+            set -ex
+            echo "Checking for JUNIT output"
+            ls /var/folders/2d/y8t5pxg56m7fzq107z1jcmh80000gn/T/test_results395136266/test_result480262132/
+            if [ -f "$BITRISE_TEST_RESULT_DIR/Flutter\ test\ results/flutter_junit_test_results.xml" ]; then
+              echo "JUNIT data exists."
+            else
+              echo "JUNIT data does not exist."
+              exit 1
+            fi
+
+            echo "Checking for coverage data at $BITRISE_FLUTTER_COVERAGE_PATH"
+            if [ -f "$BITRISE_FLUTTER_COVERAGE_PATH" ]; then
+              echo "Coverage data exists."
+            else
+              echo "Coverage data does not exist."
+              exit 1
+            fi
+
 
 
   # ----------------------------------------------------------------
