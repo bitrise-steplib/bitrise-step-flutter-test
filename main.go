@@ -1,8 +1,10 @@
 package main
 
 import (
+	"bytes"
 	"fmt"
 	"io"
+	"io/ioutil"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -28,7 +30,7 @@ func failf(msg string, args ...interface{}) {
 	os.Exit(1)
 }
 
-func copyCoverageInfo(logPth string, logFileName string) string {
+func copyToDeployDir(logPth string, logFileName string) string {
 	deployDir := os.Getenv("BITRISE_DEPLOY_DIR")
 	if deployDir == "" {
 		failf("no BITRISE_DEPLOY_DIR found")
@@ -36,7 +38,20 @@ func copyCoverageInfo(logPth string, logFileName string) string {
 	deployPth := filepath.Join(deployDir, logFileName)
 
 	if err := command.CopyFile(logPth, deployPth); err != nil {
-		failf("failed to copy code coverage output info file from (%s) to (%s), error: %s", logPth, deployPth, err)
+		failf("failed to copy `%s` info file from (%s) to (%s), error: %s", logFileName, logPth, deployPth, err)
+	}
+	return deployPth
+}
+
+func copyBufferToDeployDir(buffer []byte, logFileName string) string {
+	deployDir := os.Getenv("BITRISE_DEPLOY_DIR")
+	if deployDir == "" {
+		failf("no BITRISE_DEPLOY_DIR found")
+	}
+	deployPth := filepath.Join(deployDir, logFileName)
+
+	if err := ioutil.WriteFile(deployPth, buffer, 0664); err != nil {
+		failf("failed to write buffer to (%s), error: %s", deployPth, err)
 	}
 	return deployPth
 }
@@ -44,6 +59,7 @@ func copyCoverageInfo(logPth string, logFileName string) string {
 func main() {
 	const testName = "Flutter test results"
 	const testResultFileName = "./flutter_junit_test_results.xml"
+	const testResultJSONFileName = "flutter_json_test_results.json"
 	const coveragePath = "./coverage/lcov.info"
 	const coverageFileName = "flutter_coverage_lcov.info"
 
@@ -61,7 +77,9 @@ func main() {
 	fmt.Println()
 	log.Infof("Running test")
 
+	var jsonBuffer bytes.Buffer
 	pr, pw := io.Pipe()
+	testCmdWriter := io.MultiWriter(pw, &jsonBuffer)
 
 	if _, err := exec.LookPath("tojunit"); err != nil {
 		log.Infof("Command `tojunit` not found, installing...")
@@ -86,7 +104,7 @@ func main() {
 	junitCmd := exec.Command("tojunit", append([]string{"--output", testResultFileName})...)
 
 	testCmdModel := command.NewWithCmd(testCmd).
-		SetStdout(pw).
+		SetStdout(testCmdWriter).
 		SetStderr(os.Stderr).
 		SetDir(cfg.ProjectLocation)
 
@@ -120,6 +138,11 @@ func main() {
 		failf("Completing conversion command failed, error: %s", err)
 	}
 
+	testResultDeployPath := copyBufferToDeployDir(jsonBuffer.Bytes(), testResultJSONFileName)
+	if err := tools.ExportEnvironmentWithEnvman("BITRISE_FLUTTER_TESTRESULT_PATH", testResultDeployPath); err != nil {
+		failf("Failed to export: BITRISE_FLUTTER_TESTRESULT_PATH, error: %s", err)
+	}
+
 	exporter := testresultexport.NewExporter(cfg.TestResultsDir)
 	if err := exporter.ExportTest(testName, testResultFileName); err != nil {
 		failf("Failed to export test result: %s", err)
@@ -138,7 +161,7 @@ func main() {
 			failf("Completing coverage command failed, error: %s", err)
 		}
 
-		coverageDeployPath := copyCoverageInfo(coveragePath, coverageFileName)
+		coverageDeployPath := copyToDeployDir(coveragePath, coverageFileName)
 		if err := tools.ExportEnvironmentWithEnvman("BITRISE_FLUTTER_COVERAGE_PATH", coverageDeployPath); err != nil {
 			failf("Failed to export: BITRISE_FLUTTER_COVERAGE_PATH, error: %s", err)
 		}
