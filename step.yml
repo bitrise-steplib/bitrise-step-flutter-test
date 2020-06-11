@@ -31,8 +31,24 @@ inputs:
       description: Root directory for all test results created by the Bitrise CLI
       is_required: true
       is_dont_change_value: true
+  - generate_code_coverage_files: "no"
+    opts:
+      title: "Generate code coverage files?"
+      description: |-
+        In case of `generate_code_coverage_files: "yes"`
+        `flutter test` gets `--coverage` passed
+      value_options:
+        - "yes"
+        - "no"
+      is_required: true
   - additional_params: 
     opts:
       title: "Additional parameters"
       summary: "The flags from this input field will be appended to the `flutter test` command."
       description: "The flags from this input field will be appended to the `flutter test` command."
+outputs:
+- BITRISE_FLUTTER_COVERAGE_PATH:
+opts:
+  title: The path of the generated `lcov.info`
+  description: |-
+    The path of the generated code coverage `lcov.info` file.
