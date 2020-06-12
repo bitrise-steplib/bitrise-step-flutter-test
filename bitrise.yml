@@ -62,6 +62,14 @@ workflows:
               exit 1
             fi
 
+            echo "Checking for json test report data at $BITRISE_FLUTTER_TESTRESULT_PATH"
+            if [ -f "$BITRISE_FLUTTER_TESTRESULT_PATH" ]; then
+              echo "JSON report data exists."
+            else
+              echo "JSON report data does not exist."
+              exit 1
+            fi
+
             echo "Checking for coverage data at $BITRISE_FLUTTER_COVERAGE_PATH"
             if [ -f "$BITRISE_FLUTTER_COVERAGE_PATH" ]; then
               echo "Coverage data exists."
@@ -84,6 +92,14 @@ workflows:
               echo "JUNIT data exists."
             else
               echo "JUNIT data does not exist."
+              exit 1
+            fi
+
+            echo "Checking for json test report data at $BITRISE_FLUTTER_TESTRESULT_PATH"
+            if [ -f "$BITRISE_FLUTTER_TESTRESULT_PATH" ]; then
+              echo "JSON report data exists."
+            else
+              echo "JSON report data does not exist."
               exit 1
             fi
 
