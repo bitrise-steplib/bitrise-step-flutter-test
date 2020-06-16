@@ -8,7 +8,6 @@ description: |-
   If you add tests to your app later, add the **Flutter Test** Step to your Workflow manually. The Step runs the `flutter test` command with the specified flags. To check the available flags, open a command line interface on your own machine and run `flutter test --help`.
 
   ### Configuring the Step
-  This Step has only two inputs to configure.
   1. Provide your project's root directory in the **Project Location** field.
   2. The **Step's test result directory** is the root directory for all test results created by the Bitrise CLI. This input gets filled out automatically.
   3. You can append additional flags to the default `flutter test` command in the **Additional parameters** field.
