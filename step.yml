@@ -10,7 +10,9 @@ description: |-
   ### Configuring the Step
   This Step has only two inputs to configure.
   1. Provide your project's root directory in the **Project Location** field.
-  2. You can append additional flags to the default `flutter test` command in the **Additional parameters** field.
+  2. The **Step's test result directory** is the root directory for all test results created by the Bitrise CLI. This input gets filled out automatically.
+  3. You can append additional flags to the default `flutter test` command in the **Additional parameters** field.
+  4. Select 'yes' in the **Generate code coverage files** input to get detailed analysis of your code.
 
 
   ### Troubleshooting
