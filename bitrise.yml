@@ -22,6 +22,7 @@ workflows:
   test:
     steps:
     - script:
+        title: Delete _tmp
         inputs:
         - content: |-
             #!/bin/bash
@@ -46,7 +47,69 @@ workflows:
         - content: git clone $SAMPLE_APP_URL -b manual .
     - flutter-installer:
     - path::./:
+        title: Run without code coverage
+    - script:
+        title: Check for JUNIT output
+        inputs:
+        - content: |-
+            #!/bin/bash
+            set -ex
+            echo "Checking for JUNIT output"
+            if ls $BITRISE_TEST_RESULT_DIR/../*/Flutter\ test\ results/flutter_junit_test_results.xml 1> /dev/null 2>&1; then
+              echo "JUNIT data exists."
+            else
+              echo "JUNIT data does not exist."
+              exit 1
+            fi
 
+            echo "Checking for json test report data at $BITRISE_FLUTTER_TESTRESULT_PATH"
+            if [ -f "$BITRISE_FLUTTER_TESTRESULT_PATH" ]; then
+              echo "JSON report data exists."
+            else
+              echo "JSON report data does not exist."
+              exit 1
+            fi
+
+            echo "Checking for coverage data at $BITRISE_FLUTTER_COVERAGE_PATH"
+            if [ -f "$BITRISE_FLUTTER_COVERAGE_PATH" ]; then
+              echo "Coverage data exists."
+              exit 1
+            else
+              echo "Coverage data does not exist as expected."
+            fi
+    - path::./:
+        title: Run generating code coverage
+        inputs:
+        - generate_code_coverage_files: "yes"
+    - script:
+        title: Test step results
+        inputs:
+        - content: |-
+            #!/bin/bash
+            set -ex
+            echo "Checking for JUNIT output"
+            if ls $BITRISE_TEST_RESULT_DIR/../*/Flutter\ test\ results/flutter_junit_test_results.xml 1> /dev/null 2>&1; then
+              echo "JUNIT data exists."
+            else
+              echo "JUNIT data does not exist."
+              exit 1
+            fi
+
+            echo "Checking for json test report data at $BITRISE_FLUTTER_TESTRESULT_PATH"
+            if [ -f "$BITRISE_FLUTTER_TESTRESULT_PATH" ]; then
+              echo "JSON report data exists."
+            else
+              echo "JSON report data does not exist."
+              exit 1
+            fi
+
+            echo "Checking for coverage data at $BITRISE_FLUTTER_COVERAGE_PATH"
+            if [ -f "$BITRISE_FLUTTER_COVERAGE_PATH" ]; then
+              echo "Coverage data exists."
+            else
+              echo "Coverage data does not exist."
+              exit 1
+            fi
 
   # ----------------------------------------------------------------
   # --- workflows to Share this step into a Step Library
