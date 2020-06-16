@@ -1,11 +1,11 @@
 title: "Flutter Test"
 summary: |-
- Performs any test in a Flutter project.
+  Performs any test in a Flutter project.
 
 description: |-
 
-If you have tests in your repository, and selected `yes` when prompted during app creation, the primary Workflow will include the **Flutter Test** Step by default. 
-If you add tests to your app later, add the **Flutter Test** Step to your Workflow manually. The Step runs the `flutter test` command with the specified flags. To check the available flags, open a command line interface on your own machine and run `flutter test --help`.
+  If you have tests in your repository, and selected `yes` when prompted during app creation, the primary Workflow will include the **Flutter Test** Step by default. 
+  If you add tests to your app later, add the **Flutter Test** Step to your Workflow manually. The Step runs the `flutter test` command with the specified flags. To check the available flags, open a command line interface on your own machine and run `flutter test --help`.
 
   ### Configuring the Step
   This Step has only two inputs to configure.
