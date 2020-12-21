@@ -103,6 +103,8 @@ func main() {
 	testCmd := exec.Command("flutter", append([]string{"test", "--machine"}, additionalParams...)...)
 	junitCmd := exec.Command("tojunit", append([]string{"--output", testResultFileName})...)
 
+	testExecutionFailed := false
+
 	testCmdModel := command.NewWithCmd(testCmd).
 		SetStdout(testCmdWriter).
 		SetStderr(os.Stderr).
@@ -127,7 +129,8 @@ func main() {
 	}
 
 	if err := testCmd.Wait(); err != nil {
-		failf("Completing test command failed, error: %s", err)
+		log.Errorf("Completing test command failed, error: %s", err)
+		testExecutionFailed = true
 	}
 
 	if err := pw.Close(); err != nil {
@@ -158,7 +161,8 @@ func main() {
 		fmt.Println()
 
 		if err := coverageCmdModel.Run(); err != nil {
-			failf("Completing coverage command failed, error: %s", err)
+			log.Errorf("Completing coverage command failed, error: %s", err)
+			testExecutionFailed = true
 		}
 
 		coverageDeployPath := copyToDeployDir(coveragePath, coverageFileName)
@@ -168,4 +172,7 @@ func main() {
 	}
 
 	log.Infof("test results exported in junit format successfully")
+	if testExecutionFailed {
+		os.Exit(1)
+	}
 }
