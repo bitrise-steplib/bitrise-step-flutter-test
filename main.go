@@ -172,6 +172,7 @@ func main() {
 	}
 
 	log.Infof("test results exported in junit format successfully")
+
 	if testExecutionFailed {
 		os.Exit(1)
 	}
