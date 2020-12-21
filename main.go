@@ -58,7 +58,7 @@ func copyBufferToDeployDir(buffer []byte, logFileName string) string {
 
 func main() {
 	const testName = "Flutter test results"
-	const testResultFileName = "./flutter_junit_test_results.xml"
+	const testResultFileName = "flutter_junit_test_results.xml"
 	const testResultJSONFileName = "flutter_json_test_results.json"
 	const coveragePath = "./coverage/lcov.info"
 	const coverageFileName = "flutter_coverage_lcov.info"
@@ -68,6 +68,8 @@ func main() {
 		failf("Issue with input: %s", err)
 	}
 	stepconf.Print(cfg)
+
+	testResultPath := cfg.ProjectLocation + "/" + testResultFileName
 
 	additionalParams, err := shellquote.Split(cfg.AdditionalParams)
 	if err != nil {
@@ -144,7 +146,7 @@ func main() {
 	}
 
 	exporter := testresultexport.NewExporter(cfg.TestResultsDir)
-	if err := exporter.ExportTest(testName, testResultFileName); err != nil {
+	if err := exporter.ExportTest(testName, testResultPath); err != nil {
 		failf("Failed to export test result: %s", err)
 	}
 
