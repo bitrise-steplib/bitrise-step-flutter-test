@@ -15,7 +15,15 @@ import (
 	"github.com/bitrise-io/testresultexport/testresultexport"
 	"github.com/bitrise-tools/go-steputils/stepconf"
 	"github.com/bitrise-tools/go-steputils/tools"
-	shellquote "github.com/kballard/go-shellquote"
+	"github.com/kballard/go-shellquote"
+)
+
+const (
+	coverageFileName       = "flutter_coverage_lcov.info"
+	coveragePath           = "./coverage/lcov.info"
+	testName               = "Flutter test results"
+	testResultFileName     = "./flutter_junit_test_results.xml"
+	testResultJSONFileName = "flutter_json_test_results.json"
 )
 
 type config struct {
@@ -56,31 +64,23 @@ func copyBufferToDeployDir(buffer []byte, logFileName string) string {
 	return deployPth
 }
 
-func main() {
-	const testName = "Flutter test results"
-	const testResultFileName = "./flutter_junit_test_results.xml"
-	const testResultJSONFileName = "flutter_json_test_results.json"
-	const coveragePath = "./coverage/lcov.info"
-	const coverageFileName = "flutter_coverage_lcov.info"
-
+func parseConfig() config {
 	var cfg config
 	if err := stepconf.Parse(&cfg); err != nil {
 		failf("Issue with input: %s", err)
 	}
-	stepconf.Print(cfg)
+	return cfg
+}
 
+func parseAdditionalParams(cfg config) []string {
 	additionalParams, err := shellquote.Split(cfg.AdditionalParams)
 	if err != nil {
 		failf("Failed to parse additional parameters, error: %s", err)
 	}
+	return additionalParams
+}
 
-	fmt.Println()
-	log.Infof("Running test")
-
-	var jsonBuffer bytes.Buffer
-	pr, pw := io.Pipe()
-	testCmdWriter := io.MultiWriter(pw, &jsonBuffer)
-
+func ensureToJunitAvailable(cfg config) {
 	if _, err := exec.LookPath("tojunit"); err != nil {
 		log.Infof("Command `tojunit` not found, installing...")
 		junitInstallCmd := command.New("flutter", append([]string{"pub", "global", "activate", "junitreport"})...).
@@ -99,6 +99,14 @@ func main() {
 			failf("Failed to run command `tojunit`, %s", err)
 		}
 	}
+}
+
+func executeTest(cfg config, additionalParams []string) (bytes.Buffer, bool) {
+	var jsonBuffer bytes.Buffer
+	pr, pw := io.Pipe()
+	testCmdWriter := io.MultiWriter(pw, &jsonBuffer)
+
+	ensureToJunitAvailable(cfg)
 
 	testCmd := exec.Command("flutter", append([]string{"test", "--machine"}, additionalParams...)...)
 	junitCmd := exec.Command("tojunit", append([]string{"--output", testResultFileName})...)
@@ -140,7 +148,10 @@ func main() {
 	if err := junitCmd.Wait(); err != nil {
 		failf("Completing conversion command failed, error: %s", err)
 	}
+	return jsonBuffer, testExecutionFailed
+}
 
+func exportTestResults(cfg config, jsonBuffer bytes.Buffer) {
 	testResultDeployPath := copyBufferToDeployDir(jsonBuffer.Bytes(), testResultJSONFileName)
 	if err := tools.ExportEnvironmentWithEnvman("BITRISE_FLUTTER_TESTRESULT_PATH", testResultDeployPath); err != nil {
 		failf("Failed to export: BITRISE_FLUTTER_TESTRESULT_PATH, error: %s", err)
@@ -150,25 +161,47 @@ func main() {
 	if err := exporter.ExportTest(testName, testResultFileName); err != nil {
 		failf("Failed to export test result: %s", err)
 	}
+}
+
+func executeCoverage(additionalParams []string) bool {
+	coverageCmdModel := command.New("flutter", append([]string{"test", "--coverage"}, additionalParams...)...)
+
+	fmt.Println()
+	log.Infof("Rerunning test command to generate coverage data")
+	fmt.Println()
+	log.Donef("$ %s", coverageCmdModel.PrintableCommandArgs())
+	fmt.Println()
+
+	if err := coverageCmdModel.Run(); err != nil {
+		log.Errorf("Completing coverage command failed, error: %s", err)
+		return true
+	}
+	return false
+}
+
+func exportCoverage() {
+	coverageDeployPath := copyToDeployDir(coveragePath, coverageFileName)
+	if err := tools.ExportEnvironmentWithEnvman("BITRISE_FLUTTER_COVERAGE_PATH", coverageDeployPath); err != nil {
+		failf("Failed to export: BITRISE_FLUTTER_COVERAGE_PATH, error: %s", err)
+	}
+}
+
+func main() {
+	cfg := parseConfig()
+
+	stepconf.Print(cfg)
+
+	additionalParams := parseAdditionalParams(cfg)
+
+	fmt.Println()
+	log.Infof("Running test")
+
+	jsonBuffer, testExecutionFailed := executeTest(cfg, additionalParams)
+	exportTestResults(cfg, jsonBuffer)
 
 	if cfg.GenerateCodeCoverageFiles {
-		coverageCmdModel := command.New("flutter", append([]string{"test", "--coverage"}, additionalParams...)...)
-
-		fmt.Println()
-		log.Infof("Rerunning test command to generate coverage data")
-		fmt.Println()
-		log.Donef("$ %s", coverageCmdModel.PrintableCommandArgs())
-		fmt.Println()
-
-		if err := coverageCmdModel.Run(); err != nil {
-			log.Errorf("Completing coverage command failed, error: %s", err)
-			testExecutionFailed = true
-		}
-
-		coverageDeployPath := copyToDeployDir(coveragePath, coverageFileName)
-		if err := tools.ExportEnvironmentWithEnvman("BITRISE_FLUTTER_COVERAGE_PATH", coverageDeployPath); err != nil {
-			failf("Failed to export: BITRISE_FLUTTER_COVERAGE_PATH, error: %s", err)
-		}
+		testExecutionFailed = executeCoverage(additionalParams)
+		exportCoverage()
 	}
 
 	log.Infof("test results exported in junit format successfully")
