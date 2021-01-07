@@ -6,14 +6,6 @@ import (
 	"github.com/bitrise-tools/go-steputils/stepconf"
 )
 
-const (
-	coverageFileName       = "flutter_coverage_lcov.info"
-	coveragePath           = "./coverage/lcov.info"
-	testName               = "Flutter test results"
-	testResultFileName     = "./flutter_junit_test_results.xml"
-	testResultJSONFileName = "flutter_json_test_results.json"
-)
-
 type config struct {
 	AdditionalParams          string `env:"additional_params"`
 	ProjectLocation           string `env:"project_location,dir"`
@@ -24,7 +16,7 @@ type config struct {
 var ir interrupt = realInterrupt{}
 var parser configParser = realConfigParser{interrupt: ir}
 var builder commandBuilder = realCommandBuilder{interrupt: ir}
-var test testExecutor = realTestExecutor{interrupt: ir, commandBuilder: builder}
+var test testExecutor = realTestExecutor{interrupt: ir, commandBuilder: builder, testExporter: realTestExporter{interrupt: ir}}
 var coverage coverageExecutor = realCoverageExecutor{interrupt: ir, commandBuilder: builder}
 
 func main() {

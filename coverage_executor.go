@@ -9,6 +9,11 @@ import (
 	"path/filepath"
 )
 
+const (
+	coverageFileName       = "flutter_coverage_lcov.info"
+	coveragePath           = "./coverage/lcov.info"
+)
+
 type coverageExecutor interface {
 	executeCoverage(additionalParams []string) bool
 	exportCoverage()

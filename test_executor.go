@@ -4,12 +4,16 @@ import (
 	"bytes"
 	"fmt"
 	"github.com/bitrise-io/go-utils/log"
-	"github.com/bitrise-io/testresultexport/testresultexport"
-	"github.com/bitrise-tools/go-steputils/tools"
 	"io"
 	"io/ioutil"
 	"os"
 	"path/filepath"
+)
+
+const (
+	testName               = "Flutter test results"
+	testResultFileName     = "flutter_junit_test_results.xml"
+	testResultJSONFileName = "flutter_json_test_results.json"
 )
 
 type testExecutor interface {
@@ -20,6 +24,7 @@ type testExecutor interface {
 type realTestExecutor struct {
 	interrupt      interrupt
 	commandBuilder commandBuilder
+	testExporter   testExporter
 }
 
 func (r realTestExecutor) executeTest(cfg config, additionalParams []string) (bytes.Buffer, bool) {
@@ -71,15 +76,12 @@ func (r realTestExecutor) executeTest(cfg config, additionalParams []string) (by
 }
 
 func (r realTestExecutor) exportTestResults(cfg config, jsonBuffer bytes.Buffer) {
-	testResultDeployPath := copyBufferToDeployDir(jsonBuffer.Bytes(), testResultJSONFileName, r.interrupt)
-	if err := tools.ExportEnvironmentWithEnvman("BITRISE_FLUTTER_TESTRESULT_PATH", testResultDeployPath); err != nil {
-		r.interrupt.failWithMessage("Failed to export: BITRISE_FLUTTER_TESTRESULT_PATH, error: %s", err)
-	}
+	testResultDeployPath := r.testExporter.copyBufferToDeployPath(jsonBuffer)
+	r.testExporter.exportDeployPath(testResultDeployPath)
 
-	exporter := testresultexport.NewExporter(cfg.TestResultsDir)
-	if err := exporter.ExportTest(testName, testResultFileName); err != nil {
-		r.interrupt.failWithMessage("Failed to export test result: %s", err)
-	}
+	testResultPath := cfg.ProjectLocation + "/" + testResultFileName
+
+	r.testExporter.exportTestResultsToResultPath(cfg, testResultPath)
 }
 
 func copyBufferToDeployDir(buffer []byte, logFileName string, interrupt interrupt) string {
