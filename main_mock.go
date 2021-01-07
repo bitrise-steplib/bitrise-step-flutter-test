@@ -6,6 +6,8 @@ import (
 	"github.com/bitrise-io/go-utils/command"
 )
 
+const testProjectLocation = "foo/bar"
+
 type testResult struct {
 	failedMessage       string
 	stepFailed          bool
@@ -13,6 +15,7 @@ type testResult struct {
 	coverageExported    bool
 	testResultsExported bool
 	testExecuted        bool
+	exportPath          string
 }
 
 type mockInterrupt struct {
@@ -57,6 +60,14 @@ func (m mockCoverageExecutor) exportCoverage() {
 type mockTestExecutor struct {
 	testResult *testResult
 }
+
+func (m mockTestExecutor) copyBufferToDeployPath(bytes.Buffer) string {
+	return ""
+}
+
+func (m mockTestExecutor) exportDeployPath(string) {}
+
+func (m mockTestExecutor) exportTestResultsToResultPath(config, string) {}
 
 func (m mockTestExecutor) executeTest(config, []string) (bytes.Buffer, bool) {
 	m.testResult.testExecuted = true
@@ -119,6 +130,7 @@ func successModel() modelWrapper {
 
 type testWrapperExecutor struct {
 	realTestExecutor testExecutor
+	realExport       bool
 	testResult       *testResult
 }
 
@@ -126,8 +138,12 @@ func (t testWrapperExecutor) executeTest(cfg config, additionalParams []string) 
 	return t.realTestExecutor.executeTest(cfg, additionalParams)
 }
 
-func (t testWrapperExecutor) exportTestResults(config, bytes.Buffer) {
-	t.testResult.testResultsExported = true
+func (t testWrapperExecutor) exportTestResults(cfg config, b bytes.Buffer) {
+	if t.realExport {
+		t.realTestExecutor.exportTestResults(cfg, b)
+	} else {
+		t.testResult.testResultsExported = true
+	}
 }
 
 type coverageWrapperExecutor struct {
@@ -180,4 +196,18 @@ func setupFailingCoverageExecutors(interrupt interrupt, testResult *testResult) 
 		commandBuilder: testCommandBuilder{coverageFails: true},
 	}, testResult: testResult}
 	test = mockTestExecutor{testResult: testResult}
+}
+
+type mockTestExporter struct {
+	testResult *testResult
+}
+
+func (m mockTestExporter) copyBufferToDeployPath(bytes.Buffer) string {
+	return ""
+}
+
+func (m mockTestExporter) exportDeployPath(string) {}
+
+func (m mockTestExporter) exportTestResultsToResultPath(_ config, testResultPath string) {
+	m.testResult.exportPath = testResultPath
 }
