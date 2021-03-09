@@ -2,21 +2,23 @@ package main
 
 import (
 	"fmt"
+	"os"
+	"path"
+	"path/filepath"
+
 	"github.com/bitrise-io/go-utils/command"
 	"github.com/bitrise-io/go-utils/log"
 	"github.com/bitrise-tools/go-steputils/tools"
-	"os"
-	"path/filepath"
 )
 
 const (
-	coverageFileName       = "flutter_coverage_lcov.info"
-	coveragePath           = "./coverage/lcov.info"
+	coverageFileName     = "flutter_coverage_lcov.info"
+	coverageRelativePath = "./coverage/lcov.info"
 )
 
 type coverageExecutor interface {
-	executeCoverage(additionalParams []string) bool
-	exportCoverage()
+	executeCoverage(cfg config, additionalParams []string) bool
+	exportCoverage(projectLocation string)
 }
 
 type realCoverageExecutor struct {
@@ -24,8 +26,12 @@ type realCoverageExecutor struct {
 	commandBuilder commandBuilder
 }
 
-func (r realCoverageExecutor) executeCoverage(additionalParams []string) bool {
-	coverageCmdModel := r.commandBuilder.buildCoverageCmd(additionalParams)
+func (r realCoverageExecutor) executeCoverage(cfg config, additionalParams []string) bool {
+	coverageCmd := r.commandBuilder.buildCoverageCmd(additionalParams)
+	coverageCmdModel := coverageCmd.toModel().
+		// SetStdout(os.Stdout).
+		// SetStderr(os.Stderr).
+		SetDir(cfg.ProjectLocation)
 
 	fmt.Println()
 	log.Infof("Rerunning test command to generate coverage data")
@@ -40,8 +46,8 @@ func (r realCoverageExecutor) executeCoverage(additionalParams []string) bool {
 	return false
 }
 
-func (r realCoverageExecutor) exportCoverage() {
-	coverageDeployPath := copyToDeployDir(coveragePath, coverageFileName, r.interrupt)
+func (r realCoverageExecutor) exportCoverage(projectLocation string) {
+	coverageDeployPath := copyToDeployDir(path.Join(projectLocation, coverageRelativePath), coverageFileName, r.interrupt)
 	if err := tools.ExportEnvironmentWithEnvman("BITRISE_FLUTTER_COVERAGE_PATH", coverageDeployPath); err != nil {
 		r.interrupt.failWithMessage("Failed to export: BITRISE_FLUTTER_COVERAGE_PATH, error: %s", err)
 	}

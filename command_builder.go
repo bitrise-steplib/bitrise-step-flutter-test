@@ -2,17 +2,18 @@ package main
 
 import (
 	"fmt"
+	"os"
+	"os/exec"
+
 	"github.com/bitrise-io/go-utils/command"
 	"github.com/bitrise-io/go-utils/errorutil"
 	"github.com/bitrise-io/go-utils/log"
-	"os"
-	"os/exec"
 )
 
 type commandBuilder interface {
 	buildTestCmd(additionalParams []string) commandWrapper
 	buildJunitCmd(cfg config) commandWrapper
-	buildCoverageCmd(additionalParams []string) modelWrapper
+	buildCoverageCmd(additionalParams []string) commandWrapper
 }
 
 type realCommandBuilder struct {
@@ -49,6 +50,6 @@ func (r realCommandBuilder) buildJunitCmd(cfg config) commandWrapper {
 	return realCommandWrapper{cmd: exec.Command("tojunit", append([]string{"--output", testResultFileName})...)}
 }
 
-func (r realCommandBuilder) buildCoverageCmd(additionalParams []string) modelWrapper {
-	return realModelWrapper{model: command.New("flutter", append([]string{"test", "--coverage"}, additionalParams...)...)}
+func (r realCommandBuilder) buildCoverageCmd(additionalParams []string) commandWrapper {
+	return realCommandWrapper{cmd: exec.Command("flutter", append([]string{"test", "--coverage"}, additionalParams...)...)}
 }

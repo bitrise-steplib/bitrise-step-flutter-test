@@ -3,11 +3,12 @@ package main
 import (
 	"bytes"
 	"fmt"
-	"github.com/bitrise-io/go-utils/log"
 	"io"
 	"io/ioutil"
 	"os"
 	"path/filepath"
+
+	"github.com/bitrise-io/go-utils/log"
 )
 
 const (
