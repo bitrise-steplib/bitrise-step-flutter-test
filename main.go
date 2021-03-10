@@ -35,7 +35,7 @@ func main() {
 
 	var coverageExecutionFailed bool
 	if cfg.GenerateCodeCoverageFiles {
-		coverageExecutionFailed = coverage.executeCoverage(cfg, additionalParams)
+		coverageExecutionFailed = coverage.executeCoverage(cfg.ProjectLocation, additionalParams)
 		coverage.exportCoverage(cfg.ProjectLocation)
 	}
 

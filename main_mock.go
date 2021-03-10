@@ -49,7 +49,7 @@ type mockCoverageExecutor struct {
 	testResult *testResult
 }
 
-func (m mockCoverageExecutor) executeCoverage(config, []string) bool {
+func (m mockCoverageExecutor) executeCoverage(string, []string) bool {
 	m.testResult.coverageExecuted = true
 	return false
 }
@@ -129,8 +129,8 @@ type coverageWrapperExecutor struct {
 	testResult           *testResult
 }
 
-func (c coverageWrapperExecutor) executeCoverage(cfg config, additionalParams []string) bool {
-	return c.realCoverageExecutor.executeCoverage(cfg, additionalParams)
+func (c coverageWrapperExecutor) executeCoverage(projectLocation string, additionalParams []string) bool {
+	return c.realCoverageExecutor.executeCoverage(projectLocation, additionalParams)
 }
 
 func (c coverageWrapperExecutor) exportCoverage(projectLocation string) {

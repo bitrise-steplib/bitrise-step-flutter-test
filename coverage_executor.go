@@ -17,7 +17,7 @@ const (
 )
 
 type coverageExecutor interface {
-	executeCoverage(cfg config, additionalParams []string) bool
+	executeCoverage(projectLocation string, additionalParams []string) bool
 	exportCoverage(projectLocation string)
 }
 
@@ -26,10 +26,10 @@ type realCoverageExecutor struct {
 	commandBuilder commandBuilder
 }
 
-func (r realCoverageExecutor) executeCoverage(cfg config, additionalParams []string) bool {
+func (r realCoverageExecutor) executeCoverage(projectLocation string, additionalParams []string) bool {
 	coverageCmd := r.commandBuilder.buildCoverageCmd(additionalParams)
 	coverageCmdModel := coverageCmd.toModel().
-		SetDir(cfg.ProjectLocation)
+		SetDir(projectLocation)
 
 	fmt.Println()
 	log.Infof("Rerunning test command to generate coverage data")
