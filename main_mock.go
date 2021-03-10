@@ -3,6 +3,7 @@ package main
 import (
 	"bytes"
 	"errors"
+
 	"github.com/bitrise-io/go-utils/command"
 )
 
@@ -48,12 +49,12 @@ type mockCoverageExecutor struct {
 	testResult *testResult
 }
 
-func (m mockCoverageExecutor) executeCoverage([]string) bool {
+func (m mockCoverageExecutor) executeCoverage(string, []string) bool {
 	m.testResult.coverageExecuted = true
 	return false
 }
 
-func (m mockCoverageExecutor) exportCoverage() {
+func (m mockCoverageExecutor) exportCoverage(projectLocation string) {
 	m.testResult.coverageExported = true
 }
 
@@ -97,35 +98,12 @@ func (m mockCommandWrapper) toModel() *command.Model {
 	return command.New("")
 }
 
-type mockModelWrapper struct {
-	failRun bool
-}
-
-func (m mockModelWrapper) PrintableCommandArgs() string {
-	return ""
-}
-
-func (m mockModelWrapper) Run() error {
-	if m.failRun {
-		return errors.New("command failed")
-	}
-	return nil
-}
-
 func failingCmd() commandWrapper {
 	return mockCommandWrapper{failWait: true}
 }
 
 func successCmd() commandWrapper {
 	return mockCommandWrapper{failWait: false}
-}
-
-func failingModel() modelWrapper {
-	return mockModelWrapper{failRun: true}
-}
-
-func successModel() modelWrapper {
-	return mockModelWrapper{failRun: false}
 }
 
 type testWrapperExecutor struct {
@@ -151,11 +129,11 @@ type coverageWrapperExecutor struct {
 	testResult           *testResult
 }
 
-func (c coverageWrapperExecutor) executeCoverage(additionalParams []string) bool {
-	return c.realCoverageExecutor.executeCoverage(additionalParams)
+func (c coverageWrapperExecutor) executeCoverage(projectLocation string, additionalParams []string) bool {
+	return c.realCoverageExecutor.executeCoverage(projectLocation, additionalParams)
 }
 
-func (c coverageWrapperExecutor) exportCoverage() {
+func (c coverageWrapperExecutor) exportCoverage(projectLocation string) {
 	c.testResult.coverageExported = true
 }
 
@@ -175,11 +153,11 @@ func (t testCommandBuilder) buildJunitCmd(config) commandWrapper {
 	return successCmd()
 }
 
-func (t testCommandBuilder) buildCoverageCmd([]string) modelWrapper {
+func (t testCommandBuilder) buildCoverageCmd([]string) commandWrapper {
 	if t.coverageFails {
-		return failingModel()
+		return failingCmd()
 	}
-	return successModel()
+	return successCmd()
 }
 
 func setupFailingUnitTestsExecutors(interrupt interrupt, testResult *testResult) {

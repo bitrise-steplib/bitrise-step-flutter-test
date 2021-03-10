@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+
 	"github.com/bitrise-io/go-utils/log"
 	"github.com/bitrise-tools/go-steputils/stepconf"
 )
@@ -34,8 +35,8 @@ func main() {
 
 	var coverageExecutionFailed bool
 	if cfg.GenerateCodeCoverageFiles {
-		coverageExecutionFailed = coverage.executeCoverage(additionalParams)
-		coverage.exportCoverage()
+		coverageExecutionFailed = coverage.executeCoverage(cfg.ProjectLocation, additionalParams)
+		coverage.exportCoverage(cfg.ProjectLocation)
 	}
 
 	log.Infof("test results exported in junit format successfully")
