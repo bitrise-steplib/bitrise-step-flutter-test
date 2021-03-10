@@ -98,35 +98,12 @@ func (m mockCommandWrapper) toModel() *command.Model {
 	return command.New("")
 }
 
-type mockModelWrapper struct {
-	failRun bool
-}
-
-func (m mockModelWrapper) PrintableCommandArgs() string {
-	return ""
-}
-
-func (m mockModelWrapper) Run() error {
-	if m.failRun {
-		return errors.New("command failed")
-	}
-	return nil
-}
-
 func failingCmd() commandWrapper {
 	return mockCommandWrapper{failWait: true}
 }
 
 func successCmd() commandWrapper {
 	return mockCommandWrapper{failWait: false}
-}
-
-func failingModel() modelWrapper {
-	return mockModelWrapper{failRun: true}
-}
-
-func successModel() modelWrapper {
-	return mockModelWrapper{failRun: false}
 }
 
 type testWrapperExecutor struct {

@@ -29,8 +29,6 @@ type realCoverageExecutor struct {
 func (r realCoverageExecutor) executeCoverage(cfg config, additionalParams []string) bool {
 	coverageCmd := r.commandBuilder.buildCoverageCmd(additionalParams)
 	coverageCmdModel := coverageCmd.toModel().
-		// SetStdout(os.Stdout).
-		// SetStderr(os.Stderr).
 		SetDir(cfg.ProjectLocation)
 
 	fmt.Println()

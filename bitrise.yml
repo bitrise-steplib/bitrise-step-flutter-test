@@ -3,9 +3,11 @@ default_step_lib_source: https://github.com/bitrise-io/bitrise-steplib.git
 
 app:
   envs:
-    - SAMPLE_APP_URL: https://github.com/adborbas/sample-apps-flutter-ios-android.git
-    - SAMPLE_APP_BRANCH: not_route_project
+    - SAMPLE_APP_URL: https://github.com/bitrise-samples/sample-apps-flutter-ios-android.git
+    - SAMPLE_APP_BRANCH: "manual"
     - ORIGIN_SOURCE_DIR: $BITRISE_SOURCE_DIR
+    - PROJECT_LOCATION: "$BITRISE_SOURCE_DIR/_tmp"
+    - GENERATE_CODE_COVERAGE_FILES: "no"
 
 workflows:
   ci:
@@ -21,11 +23,15 @@ workflows:
 
   test:
     title: Run E2E tests
-    before_run:
+    after_run:
       - test-without-codecoverage
       - test-with-codecoverage
+      - test-not-root-project-with-codecoverage
 
-  prepare-test:
+  common:
+    after_run:
+      - assert-output
+      - validate-coverage
     title: Prepare test
     steps:
       - script:
@@ -53,32 +59,37 @@ workflows:
           inputs:
             - content: git clone $SAMPLE_APP_URL -b $SAMPLE_APP_BRANCH .
       - flutter-installer:
+      - script:
+          title: echo
+          inputs:
+            - content: echo "$PROJECT_LOCATION"
+      - path::./:
+          inputs:
+            - project_location: "$PROJECT_LOCATION"
+            - generate_code_coverage_files: "$GENERATE_CODE_COVERAGE_FILES"
 
   test-without-codecoverage:
     title: "Run without code coverage"
-    before_run:
-      - prepare-test
     after_run:
-      - validate-test
-    steps:
-      - path::./:
-          inputs:
-            - project_location: "$BITRISE_SOURCE_DIR/src"
+      - common
 
   test-with-codecoverage:
+    envs:
+      - GENERATE_CODE_COVERAGE_FILES: "yes"
     title: "Run with code coverage"
-    before_run:
-      - prepare-test
     after_run:
-      - validate-test
-      - validate-coverage
-    steps:
-      - path::./:
-          inputs:
-            - project_location: "$BITRISE_SOURCE_DIR/src"
-            - generate_code_coverage_files: "yes"
+      - common
 
-  validate-test:
+  test-not-root-project-with-codecoverage:
+    envs:
+      - SAMPLE_APP_BRANCH: not_root_project
+      - PROJECT_LOCATION: "$ORIGIN_SOURCE_DIR/_tmp/src"
+      - GENERATE_CODE_COVERAGE_FILES: "yes"
+    title: "Run with code coverage for not root project"
+    after_run:
+      - common
+
+  assert-output:
     steps:
       - script:
           title: Check for JUNIT output
@@ -106,6 +117,7 @@ workflows:
   validate-coverage:
     steps:
       - script:
+          run_if: '{{enveq "GENERATE_CODE_COVERAGE_FILES" "yes"}}'
           title: Check for coverage output
           inputs:
             - content: |-
