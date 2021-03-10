@@ -54,15 +54,13 @@ workflows:
           inputs:
             - path: ${ORIGIN_SOURCE_DIR}/_tmp
             - is_create_path: true
-      - script:
-          title: Clone sample app
+      - git::https://github.com/bitrise-steplib/bitrise-step-simple-git-clone.git:
+          title: Clone test project
           inputs:
-            - content: git clone $SAMPLE_APP_URL -b $SAMPLE_APP_BRANCH .
+            - clone_into_dir: $BITRISE_SOURCE_DIR
+            - repository_url: $SAMPLE_APP_URL
+            - branch: $SAMPLE_APP_BRANCH
       - flutter-installer:
-      - script:
-          title: echo
-          inputs:
-            - content: echo "$PROJECT_LOCATION"
       - path::./:
           inputs:
             - project_location: "$PROJECT_LOCATION"
