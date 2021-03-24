@@ -1,0 +1,31 @@
+# github.com/bitrise-io/go-steputils v0.0.0-20210324082442-21a1b8f2b237
+## explicit
+# github.com/bitrise-io/go-utils v0.0.0-20200629150542-0c47c16813a4
+## explicit
+github.com/bitrise-io/go-utils/colorstring
+github.com/bitrise-io/go-utils/command
+github.com/bitrise-io/go-utils/errorutil
+github.com/bitrise-io/go-utils/fileutil
+github.com/bitrise-io/go-utils/log
+github.com/bitrise-io/go-utils/parseutil
+github.com/bitrise-io/go-utils/pathutil
+github.com/bitrise-io/go-utils/pointers
+# github.com/bitrise-io/testresultexport v0.0.0-20200605162206-3a8a4bb59cdb
+## explicit
+github.com/bitrise-io/testresultexport/testresultexport
+# github.com/bitrise-tools/go-steputils v0.0.0-20200227150459-94490ca44ddb
+## explicit
+github.com/bitrise-tools/go-steputils/stepconf
+github.com/bitrise-tools/go-steputils/tools
+# github.com/davecgh/go-spew v1.1.1
+github.com/davecgh/go-spew/spew
+# github.com/kballard/go-shellquote v0.0.0-20180428030007-95032a82bc51
+## explicit
+github.com/kballard/go-shellquote
+# github.com/pmezard/go-difflib v1.0.0
+github.com/pmezard/go-difflib/difflib
+# github.com/stretchr/testify v1.6.1
+## explicit
+github.com/stretchr/testify/assert
+# gopkg.in/yaml.v3 v3.0.0-20200615113413-eeeca48fe776
+gopkg.in/yaml.v3
