@@ -3,7 +3,7 @@ package main
 import (
 	"bytes"
 	"github.com/bitrise-io/testresultexport/testresultexport"
-	"github.com/bitrise-tools/go-steputils/tools"
+	"github.com/bitrise-io/go-steputils/tools"
 )
 
 type testExporter interface {
