@@ -47,14 +47,6 @@ func (r realCommandBuilder) buildTestCmd(additionalParams []string) commandWrapp
 	return realCommandWrapper{cmd: exec.Command("/bin/sh", "-c", "flutter test --machine"+params)}
 }
 
-func buildParamString(additionalParams []string) string {
-	params := strings.Join(additionalParams, " ")
-	if params != "" {
-		params = " " + params
-	}
-	return params
-}
-
 func (r realCommandBuilder) buildJunitCmd(cfg config) commandWrapper {
 	r.ensureToJunitAvailable(cfg)
 	return realCommandWrapper{cmd: exec.Command("tojunit", append([]string{"--output", testResultFileName})...)}
@@ -63,4 +55,12 @@ func (r realCommandBuilder) buildJunitCmd(cfg config) commandWrapper {
 func (r realCommandBuilder) buildCoverageCmd(additionalParams []string) commandWrapper {
 	params := buildParamString(additionalParams)
 	return realCommandWrapper{cmd: exec.Command("/bin/sh", "-c", "flutter test --coverage"+params)}
+}
+
+func buildParamString(additionalParams []string) string {
+	params := strings.Join(additionalParams, " ")
+	if params != "" {
+		params = " " + params
+	}
+	return params
 }
