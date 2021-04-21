@@ -40,6 +40,12 @@ is_requires_admin_user: true
 is_always_run: false
 is_skippable: false
 
+deps:
+  brew:
+    - name: zsh
+  apt_get:
+    - name: zsh
+
 toolkit:
   go:
     package_name: github.com/bitrise-steplib/bitrise-step-flutter-test
