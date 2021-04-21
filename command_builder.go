@@ -43,7 +43,11 @@ func (r realCommandBuilder) ensureToJunitAvailable(cfg config) {
 }
 
 func (r realCommandBuilder) buildTestCmd(additionalParams []string) commandWrapper {
-	return realCommandWrapper{cmd: exec.Command("/bin/sh", "-c", "flutter test --machine"+strings.Join(additionalParams, " "))}
+	params := strings.Join(additionalParams, " ")
+	if params != "" {
+		params = " " + params
+	}
+	return realCommandWrapper{cmd: exec.Command("/bin/sh", "-c", "flutter test --machine"+params)}
 	//return realCommandWrapper{cmd: exec.Command("flutter", append([]string{"test", "--machine"}, additionalParams...)...)}
 }
 
