@@ -1,7 +1,7 @@
 package main
 
 import (
-	"github.com/bitrise-tools/go-steputils/stepconf"
+	"github.com/bitrise-io/go-steputils/stepconf"
 	"github.com/kballard/go-shellquote"
 )
 

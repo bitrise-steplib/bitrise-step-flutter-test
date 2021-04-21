@@ -8,7 +8,7 @@ import (
 
 	"github.com/bitrise-io/go-utils/command"
 	"github.com/bitrise-io/go-utils/log"
-	"github.com/bitrise-tools/go-steputils/tools"
+	"github.com/bitrise-io/go-steputils/tools"
 )
 
 const (
