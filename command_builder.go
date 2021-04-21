@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
+	"strings"
 
 	"github.com/bitrise-io/go-utils/command"
 	"github.com/bitrise-io/go-utils/errorutil"
@@ -42,7 +43,8 @@ func (r realCommandBuilder) ensureToJunitAvailable(cfg config) {
 }
 
 func (r realCommandBuilder) buildTestCmd(additionalParams []string) commandWrapper {
-	return realCommandWrapper{cmd: exec.Command("flutter", append([]string{"test", "--machine"}, additionalParams...)...)}
+	return realCommandWrapper{cmd: exec.Command("/bin/sh", "-c", "flutter test --machine"+strings.Join(additionalParams, " "))}
+	//return realCommandWrapper{cmd: exec.Command("flutter", append([]string{"test", "--machine"}, additionalParams...)...)}
 }
 
 func (r realCommandBuilder) buildJunitCmd(cfg config) commandWrapper {
