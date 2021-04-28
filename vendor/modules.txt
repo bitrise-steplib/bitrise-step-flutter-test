@@ -15,6 +15,9 @@ github.com/bitrise-io/go-utils/pointers
 # github.com/bitrise-io/testresultexport v0.0.0-20200605162206-3a8a4bb59cdb
 ## explicit
 github.com/bitrise-io/testresultexport/testresultexport
+# github.com/bmatcuk/doublestar/v4 v4.0.1
+## explicit
+github.com/bmatcuk/doublestar/v4
 # github.com/davecgh/go-spew v1.1.1
 github.com/davecgh/go-spew/spew
 # github.com/kballard/go-shellquote v0.0.0-20180428030007-95032a82bc51

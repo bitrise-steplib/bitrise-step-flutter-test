@@ -45,6 +45,10 @@ func (m mockParser) parseAdditionalParams(config) []string {
 	return []string{}
 }
 
+func (m mockParser) expandTestsPathPattern(cfg config) []string {
+	return []string{}
+}
+
 type mockCoverageExecutor struct {
 	testResult *testResult
 }
