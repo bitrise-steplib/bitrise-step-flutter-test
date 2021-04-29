@@ -36,7 +36,7 @@ func (r realConfigParser) expandTestsPathPattern(cfg config) []string {
 		return nil
 	}
 	for _, path := range glob {
-		result = append(result, strings.Trim(path, rootPath))
+		result = append(result, strings.TrimPrefix(path, rootPath))
 	}
 	return result
 }
