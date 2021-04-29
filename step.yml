@@ -77,7 +77,7 @@ inputs:
       title: "Test files pattern"
       summary: "This pattern will be used as the last argument appended to the `flutter test` command."
       description: |-
-        The pattern from this input field will be expanded and fed to the `flutter test` command.
+        The pattern from this input field will be expanded and fed to the `flutter test` command.  
         Both * and ** glob patterns are supported. E.g.: `lib/**/*_test.dart`
 outputs:
   - BITRISE_FLUTTER_COVERAGE_PATH:

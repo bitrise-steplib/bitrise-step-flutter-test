@@ -41,11 +41,11 @@ func (m mockParser) parseConfig() config {
 	return config{GenerateCodeCoverageFiles: true}
 }
 
-func (m mockParser) parseAdditionalParams(config) []string {
+func (m mockParser) parseAdditionalParams(string) []string {
 	return []string{}
 }
 
-func (m mockParser) expandTestsPathPattern(cfg config) []string {
+func (m mockParser) expandTestsPathPattern(string, string) []string {
 	return []string{}
 }
 

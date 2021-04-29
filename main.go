@@ -26,9 +26,9 @@ func main() {
 
 	stepconf.Print(cfg)
 
-	additionalParams := parser.parseAdditionalParams(cfg)
+	additionalParams := parser.parseAdditionalParams(cfg.AdditionalParams)
 
-	testPaths := parser.expandTestsPathPattern(cfg)
+	testPaths := parser.expandTestsPathPattern(cfg.ProjectLocation, cfg.TestsPathPattern)
 
 	additionalParams = append(additionalParams, testPaths...)
 
