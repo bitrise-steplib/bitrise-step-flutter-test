@@ -28,10 +28,10 @@ func (r realConfigParser) parseConfig() config {
 }
 
 func (r realConfigParser) expandTestsPathPattern(cfg config) []string {
-	var result []string
 	if cfg.TestsPathPattern == "" {
-		return result
+		return nil
 	}
+	var result []string
 	rootPath := cfg.ProjectLocation + string(os.PathSeparator)
 	glob, err := doublestar.Glob(rootPath + cfg.TestsPathPattern)
 	if err != nil {
