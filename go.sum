@@ -7,8 +7,6 @@ github.com/bitrise-io/testresultexport v0.0.0-20200605162206-3a8a4bb59cdb h1:3n9
 github.com/bitrise-io/testresultexport v0.0.0-20200605162206-3a8a4bb59cdb/go.mod h1:n25Uqk4yH+vdyrdAizOMjsx6a+Jxcfcu4iju4KPIXt4=
 github.com/bmatcuk/doublestar/v3 v3.0.0 h1:TQtVPlDnAYwcrVNB2JiGuMc++H5qzWZd9PhkNo5WyHI=
 github.com/bmatcuk/doublestar/v3 v3.0.0/go.mod h1:6PcTVMw80pCY1RVuoqu3V++99uQB3vsSYKPTd8AWA0k=
-github.com/bmatcuk/doublestar/v4 v4.0.1 h1:v5DFrvGpNnIKPlG7gcF4TlceHwBTvHdmjgDEkbDk9t8=
-github.com/bmatcuk/doublestar/v4 v4.0.1/go.mod h1:xBQ8jztBU6kakFMg+8WGxn0c6z1fTSPVIjEY1Wr7jzc=
 github.com/davecgh/go-spew v1.1.0/go.mod h1:J7Y8YcW2NihsgmVo/mv3lAwl/skON4iLHjSsI+c5H38=
 github.com/davecgh/go-spew v1.1.1 h1:vj9j/u1bqnvCEfJOwUhtlOARqs3+rkHYY13jYWTU97c=
 github.com/davecgh/go-spew v1.1.1/go.mod h1:J7Y8YcW2NihsgmVo/mv3lAwl/skON4iLHjSsI+c5H38=
