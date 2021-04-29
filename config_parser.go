@@ -3,7 +3,7 @@ package main
 import (
 	"github.com/bitrise-io/go-steputils/stepconf"
 	"github.com/bitrise-io/go-utils/log"
-	"github.com/bmatcuk/doublestar/v4"
+	"github.com/bmatcuk/doublestar/v3"
 	"github.com/kballard/go-shellquote"
 	"os"
 )
@@ -27,8 +27,7 @@ func (r realConfigParser) parseConfig() config {
 }
 
 func (r realConfigParser) expandTestsPathPattern(cfg config) []string {
-	dirFS := os.DirFS(cfg.ProjectLocation)
-	glob, err := doublestar.Glob(dirFS, cfg.TestsPathPattern)
+	glob, err := doublestar.Glob(cfg.ProjectLocation + string(os.PathSeparator) + cfg.TestsPathPattern)
 	if err != nil {
 		log.Warnf("Couldn't expand pattern: %s, cause: %s", cfg.TestsPathPattern, err)
 		return nil
