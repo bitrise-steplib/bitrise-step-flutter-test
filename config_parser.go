@@ -6,6 +6,7 @@ import (
 	"github.com/bmatcuk/doublestar/v3"
 	"github.com/kballard/go-shellquote"
 	"os"
+	"strings"
 )
 
 type configParser interface {
@@ -27,12 +28,17 @@ func (r realConfigParser) parseConfig() config {
 }
 
 func (r realConfigParser) expandTestsPathPattern(cfg config) []string {
-	glob, err := doublestar.Glob(cfg.ProjectLocation + string(os.PathSeparator) + cfg.TestsPathPattern)
+	var result []string
+	rootPath := cfg.ProjectLocation + string(os.PathSeparator)
+	glob, err := doublestar.Glob(rootPath + cfg.TestsPathPattern)
 	if err != nil {
 		log.Warnf("Couldn't expand pattern: %s, cause: %s", cfg.TestsPathPattern, err)
 		return nil
 	}
-	return glob
+	for _, path := range glob {
+		result = append(result, strings.Trim(path, rootPath))
+	}
+	return result
 }
 
 func (r realConfigParser) parseAdditionalParams(cfg config) []string {
