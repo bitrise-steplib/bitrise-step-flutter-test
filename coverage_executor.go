@@ -6,9 +6,9 @@ import (
 	"path"
 	"path/filepath"
 
+	"github.com/bitrise-io/go-steputils/tools"
 	"github.com/bitrise-io/go-utils/command"
 	"github.com/bitrise-io/go-utils/log"
-	"github.com/bitrise-io/go-steputils/tools"
 )
 
 const (

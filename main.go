@@ -3,12 +3,13 @@ package main
 import (
 	"fmt"
 
-	"github.com/bitrise-io/go-utils/log"
 	"github.com/bitrise-io/go-steputils/stepconf"
+	"github.com/bitrise-io/go-utils/log"
 )
 
 type config struct {
 	AdditionalParams          string `env:"additional_params"`
+	TestsPathPattern          string `env:"tests_path_pattern"`
 	ProjectLocation           string `env:"project_location,dir"`
 	TestResultsDir            string `env:"bitrise_test_result_dir,dir"`
 	GenerateCodeCoverageFiles bool   `env:"generate_code_coverage_files,opt[yes,no]"`
@@ -25,7 +26,11 @@ func main() {
 
 	stepconf.Print(cfg)
 
-	additionalParams := parser.parseAdditionalParams(cfg)
+	additionalParams := parser.parseAdditionalParams(cfg.AdditionalParams)
+
+	testPaths := parser.expandTestsPathPattern(cfg.ProjectLocation, cfg.TestsPathPattern)
+
+	additionalParams = append(additionalParams, testPaths...)
 
 	fmt.Println()
 	log.Infof("Running test")
