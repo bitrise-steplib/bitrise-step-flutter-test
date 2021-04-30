@@ -70,15 +70,15 @@ inputs:
   - additional_params:
     opts:
       title: "Additional parameters"
-      summary: "The flags from this input field will be appended to the `flutter test` command."
-      description: "The flags from this input field will be appended to the `flutter test` command."
+      summary: "The flags from this input field are appended to the `flutter test` command."
+      description: "The flags from this input field are appended to the `flutter test` command."
   - tests_path_pattern:
     opts:
       title: "Test files pattern"
-      summary: "This pattern will be used as the last argument appended to the `flutter test` command."
+      summary: "This pattern is used as the last argument appended to the `flutter test` command."
       description: |-
-        The pattern from this input field will be expanded and fed to the `flutter test` command.  
-        Both * and ** glob patterns are supported. E.g.: `lib/**/*_test.dart`
+        The pattern from this input field is expanded and fed to the `flutter test` command.  
+        Both * and ** glob patterns are supported. For example, `lib/**/*_test.dart`.
 outputs:
   - BITRISE_FLUTTER_COVERAGE_PATH:
     opts:
