@@ -2,7 +2,7 @@ package main
 
 import (
 	"bytes"
-	"github.com/bitrise-io/testresultexport/testresultexport"
+	"github.com/bitrise-io/go-steputils/testresultexport"
 	"github.com/bitrise-io/go-steputils/tools"
 )
 
