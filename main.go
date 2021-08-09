@@ -35,18 +35,24 @@ func main() {
 	fmt.Println()
 	log.Infof("Running test")
 
-	jsonBuffer, testExecutionFailed := test.executeTest(cfg, additionalParams)
-	test.exportTestResults(cfg, jsonBuffer)
-
 	var coverageExecutionFailed bool
 	if cfg.GenerateCodeCoverageFiles {
 		coverageExecutionFailed = coverage.executeCoverage(cfg.ProjectLocation, additionalParams)
 		coverage.exportCoverage(cfg.ProjectLocation)
-	}
 
-	log.Infof("test results exported in junit format successfully")
+		log.Infof("test results with coverage exported in junit format successfully")
 
-	if testExecutionFailed || coverageExecutionFailed {
-		ir.fail()
+		if coverageExecutionFailed {
+			ir.fail()
+		}
+	} else {
+	  	jsonBuffer, testExecutionFailed := test.executeTest(cfg, additionalParams)
+		test.exportTestResults(cfg, jsonBuffer)
+
+		log.Infof("test results exported in junit format successfully")
+
+		if testExecutionFailed {
+			ir.fail()			
+		}
 	}
 }
