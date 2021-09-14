@@ -4,18 +4,12 @@ import (
 	"bytes"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"os"
-	"path/filepath"
 
 	"github.com/bitrise-io/go-utils/log"
 )
 
-const (
-	testName               = "Flutter test results"
-	testResultFileName     = "flutter_junit_test_results.xml"
-	testResultJSONFileName = "flutter_json_test_results.json"
-)
+const testResultFileName = "flutter_junit_test_results.xml"
 
 type testExecutor interface {
 	executeTest(cfg config, additionalParams []string) (bytes.Buffer, bool)
@@ -33,7 +27,7 @@ func (r realTestExecutor) executeTest(cfg config, additionalParams []string) (by
 	pr, pw := io.Pipe()
 	testCmdWriter := io.MultiWriter(pw, &jsonBuffer)
 
-	testCmd := r.commandBuilder.buildTestCmd(additionalParams)
+	testCmd := r.commandBuilder.buildTestCmd(cfg.GenerateCodeCoverageFiles, additionalParams)
 	junitCmd := r.commandBuilder.buildJunitCmd(cfg)
 
 	testExecutionFailed := false
@@ -83,17 +77,8 @@ func (r realTestExecutor) exportTestResults(cfg config, jsonBuffer bytes.Buffer)
 	testResultPath := cfg.ProjectLocation + "/" + testResultFileName
 
 	r.testExporter.exportTestResultsToResultPath(cfg, testResultPath)
-}
 
-func copyBufferToDeployDir(buffer []byte, logFileName string, interrupt interrupt) string {
-	deployDir := os.Getenv("BITRISE_DEPLOY_DIR")
-	if deployDir == "" {
-		interrupt.failWithMessage("no BITRISE_DEPLOY_DIR found")
+	if cfg.GenerateCodeCoverageFiles {
+		r.testExporter.exportCoverage(cfg.ProjectLocation)
 	}
-	deployPth := filepath.Join(deployDir, logFileName)
-
-	if err := ioutil.WriteFile(deployPth, buffer, 0664); err != nil {
-		interrupt.failWithMessage("failed to write buffer to (%s), error: %s", deployPth, err)
-	}
-	return deployPth
 }

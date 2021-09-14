@@ -12,7 +12,6 @@ const testProjectLocation = "foo/bar"
 type testResult struct {
 	failedMessage       string
 	stepFailed          bool
-	coverageExecuted    bool
 	coverageExported    bool
 	testResultsExported bool
 	testExecuted        bool
@@ -47,40 +46,6 @@ func (m mockParser) parseAdditionalParams(string) []string {
 
 func (m mockParser) expandTestsPathPattern(string, string) []string {
 	return []string{}
-}
-
-type mockCoverageExecutor struct {
-	testResult *testResult
-}
-
-func (m mockCoverageExecutor) executeCoverage(string, []string) bool {
-	m.testResult.coverageExecuted = true
-	return false
-}
-
-func (m mockCoverageExecutor) exportCoverage(projectLocation string) {
-	m.testResult.coverageExported = true
-}
-
-type mockTestExecutor struct {
-	testResult *testResult
-}
-
-func (m mockTestExecutor) copyBufferToDeployPath(bytes.Buffer) string {
-	return ""
-}
-
-func (m mockTestExecutor) exportDeployPath(string) {}
-
-func (m mockTestExecutor) exportTestResultsToResultPath(config, string) {}
-
-func (m mockTestExecutor) executeTest(config, []string) (bytes.Buffer, bool) {
-	m.testResult.testExecuted = true
-	return bytes.Buffer{}, false
-}
-
-func (m mockTestExecutor) exportTestResults(config, bytes.Buffer) {
-	m.testResult.testResultsExported = true
 }
 
 type mockCommandWrapper struct {
@@ -125,28 +90,15 @@ func (t testWrapperExecutor) exportTestResults(cfg config, b bytes.Buffer) {
 		t.realTestExecutor.exportTestResults(cfg, b)
 	} else {
 		t.testResult.testResultsExported = true
+		t.testResult.coverageExported = true
 	}
 }
 
-type coverageWrapperExecutor struct {
-	realCoverageExecutor realCoverageExecutor
-	testResult           *testResult
-}
-
-func (c coverageWrapperExecutor) executeCoverage(projectLocation string, additionalParams []string) bool {
-	return c.realCoverageExecutor.executeCoverage(projectLocation, additionalParams)
-}
-
-func (c coverageWrapperExecutor) exportCoverage(projectLocation string) {
-	c.testResult.coverageExported = true
-}
-
 type testCommandBuilder struct {
-	testFails     bool
-	coverageFails bool
+	testFails bool
 }
 
-func (t testCommandBuilder) buildTestCmd([]string) commandWrapper {
+func (t testCommandBuilder) buildTestCmd(generateCoverage bool, additionalParams []string) commandWrapper {
 	if t.testFails {
 		return failingCmd()
 	}
@@ -157,31 +109,20 @@ func (t testCommandBuilder) buildJunitCmd(config) commandWrapper {
 	return successCmd()
 }
 
-func (t testCommandBuilder) buildCoverageCmd([]string) commandWrapper {
-	if t.coverageFails {
-		return failingCmd()
-	}
-	return successCmd()
-}
-
-func setupFailingUnitTestsExecutors(interrupt interrupt, testResult *testResult) {
-	coverage = mockCoverageExecutor{testResult: testResult}
+func setupFailingUnitTestsExecutor(interrupt interrupt, testResult *testResult) {
 	test = testWrapperExecutor{realTestExecutor: realTestExecutor{
 		interrupt:      interrupt,
 		commandBuilder: testCommandBuilder{testFails: true},
+		testExporter:   mockTestExporter{testResult: testResult},
 	}, testResult: testResult}
-}
-
-func setupFailingCoverageExecutors(interrupt interrupt, testResult *testResult) {
-	coverage = coverageWrapperExecutor{realCoverageExecutor: realCoverageExecutor{
-		interrupt:      interrupt,
-		commandBuilder: testCommandBuilder{coverageFails: true},
-	}, testResult: testResult}
-	test = mockTestExecutor{testResult: testResult}
 }
 
 type mockTestExporter struct {
 	testResult *testResult
+}
+
+func (m mockTestExporter) exportCoverage(projectLocation string) {
+	m.testResult.coverageExported = true
 }
 
 func (m mockTestExporter) copyBufferToDeployPath(bytes.Buffer) string {

@@ -2,53 +2,52 @@ package main
 
 import (
 	"bytes"
-	"github.com/stretchr/testify/assert"
 	"testing"
+
+	"github.com/stretchr/testify/assert"
 )
 
-func TestResultsExportedAndCoverageRunWhenTestExecutionFails(t *testing.T) {
+func TestResultsExportedWhenExecutionFails(t *testing.T) {
 	// Arrange
 	result := testResult{}
 	mi := mockInterrupt{testResult: &result}
 	ir = mi
 	parser = mockParser{}
-	setupFailingUnitTestsExecutors(ir, &result)
+	setupFailingUnitTestsExecutor(ir, &result)
 
 	// Act
 	main()
 
 	// Assert
-	assert.Equal(t, result.testResultsExported, true)
-	assert.Equal(t, result.coverageExecuted, true)
-	assert.Equal(t, result.coverageExported, true)
-	assert.Equal(t, result.failedMessage, "")
-	assert.Equal(t, result.stepFailed, true)
+	assert.Equal(t, true, result.testResultsExported)
+	assert.Equal(t, true, result.coverageExported)
+	assert.Equal(t, "", result.failedMessage)
+	assert.Equal(t, true, result.stepFailed)
 }
 
-func TestCoverageExportedWhenCoverageExecutionFails(t *testing.T) {
+func TestCoverageExportedWhenExecutionFails(t *testing.T) {
 	// Arrange
 	result := testResult{}
 	mi := mockInterrupt{testResult: &result}
 	ir = mi
 	parser = mockParser{}
-	setupFailingCoverageExecutors(ir, &result)
+	setupFailingUnitTestsExecutor(ir, &result)
 
 	// Act
 	main()
 
 	// Assert
-	assert.Equal(t, result.testExecuted, true)
-	assert.Equal(t, result.testResultsExported, true)
-	assert.Equal(t, result.coverageExported, true)
-	assert.Equal(t, result.failedMessage, "")
-	assert.Equal(t, result.stepFailed, true)
+	assert.Equal(t, false, result.testExecuted)
+	assert.Equal(t, true, result.testResultsExported)
+	assert.Equal(t, true, result.coverageExported)
+	assert.Equal(t, "", result.failedMessage)
+	assert.Equal(t, true, result.stepFailed)
 }
 
 func TestResultsAreExportedFromNonRootProject(t *testing.T) {
 	// Arrange
 	result := testResult{}
-	test := testWrapperExecutor{realTestExecutor: realTestExecutor{testExporter: mockTestExporter{testResult: &result},
-	}, realExport: true}
+	test := testWrapperExecutor{realTestExecutor: realTestExecutor{testExporter: mockTestExporter{testResult: &result}}, realExport: true}
 
 	// Act
 	test.exportTestResults(config{ProjectLocation: testProjectLocation}, bytes.Buffer{})

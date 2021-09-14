@@ -19,7 +19,6 @@ var ir interrupt = realInterrupt{}
 var parser configParser = realConfigParser{interrupt: ir}
 var builder commandBuilder = realCommandBuilder{interrupt: ir}
 var test testExecutor = realTestExecutor{interrupt: ir, commandBuilder: builder, testExporter: realTestExporter{interrupt: ir}}
-var coverage coverageExecutor = realCoverageExecutor{interrupt: ir, commandBuilder: builder}
 
 func main() {
 	cfg := parser.parseConfig()
@@ -35,24 +34,10 @@ func main() {
 	fmt.Println()
 	log.Infof("Running test")
 
-	var coverageExecutionFailed bool
-	if cfg.GenerateCodeCoverageFiles {
-		coverageExecutionFailed = coverage.executeCoverage(cfg.ProjectLocation, additionalParams)
-		coverage.exportCoverage(cfg.ProjectLocation)
+	outputBuffer, testErr := test.executeTest(cfg, additionalParams)
+	test.exportTestResults(cfg, outputBuffer)
 
-		log.Infof("test results with coverage exported in junit format successfully")
-
-		if coverageExecutionFailed {
-			ir.fail()
-		}
-	} else {
-	  	jsonBuffer, testExecutionFailed := test.executeTest(cfg, additionalParams)
-		test.exportTestResults(cfg, jsonBuffer)
-
-		log.Infof("test results exported in junit format successfully")
-
-		if testExecutionFailed {
-			ir.fail()			
-		}
+	if testErr {
+		ir.fail()
 	}
 }
