@@ -11,9 +11,8 @@ import (
 )
 
 type commandBuilder interface {
-	buildTestCmd(additionalParams []string) commandWrapper
+	buildTestCmd(generateCoverage bool, additionalParams []string) commandWrapper
 	buildJunitCmd(cfg config) commandWrapper
-	buildCoverageCmd(additionalParams []string) commandWrapper
 }
 
 type realCommandBuilder struct {
@@ -23,7 +22,7 @@ type realCommandBuilder struct {
 func (r realCommandBuilder) ensureToJunitAvailable(cfg config) {
 	if _, err := exec.LookPath("tojunit"); err != nil {
 		log.Infof("Command `tojunit` not found, installing...")
-		junitInstallCmd := command.New("flutter", append([]string{"pub", "global", "activate", "junitreport"})...).
+		junitInstallCmd := command.New("flutter", []string{"pub", "global", "activate", "junitreport"}...).
 			SetStdout(os.Stdout).
 			SetStderr(os.Stderr).
 			SetDir(cfg.ProjectLocation)
@@ -41,15 +40,17 @@ func (r realCommandBuilder) ensureToJunitAvailable(cfg config) {
 	}
 }
 
-func (r realCommandBuilder) buildTestCmd(additionalParams []string) commandWrapper {
-	return realCommandWrapper{cmd: exec.Command("flutter", append([]string{"test", "--machine"}, additionalParams...)...)}
+func (r realCommandBuilder) buildTestCmd(generateCoverage bool, additionalParams []string) commandWrapper {
+	params := []string{"test", "--machine"}
+	if generateCoverage {
+		params = append(params, "--coverage")
+	}
+	params = append(params, additionalParams...)
+
+	return realCommandWrapper{cmd: exec.Command("flutter", params...)}
 }
 
 func (r realCommandBuilder) buildJunitCmd(cfg config) commandWrapper {
 	r.ensureToJunitAvailable(cfg)
-	return realCommandWrapper{cmd: exec.Command("tojunit", append([]string{"--output", testResultFileName})...)}
-}
-
-func (r realCommandBuilder) buildCoverageCmd(additionalParams []string) commandWrapper {
-	return realCommandWrapper{cmd: exec.Command("flutter", append([]string{"test", "--coverage"}, additionalParams...)...)}
+	return realCommandWrapper{cmd: exec.Command("tojunit", []string{"--output", testResultFileName}...)}
 }
