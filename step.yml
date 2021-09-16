@@ -57,7 +57,7 @@ inputs:
       description: Root directory for all test results created by the Bitrise CLI
       is_required: true
       is_dont_change_value: true
-  - generate_code_coverage_files: no
+  - generate_code_coverage_files: "no"
     opts:
       title: Generate code coverage files?
       description: |-
