@@ -1,4 +1,4 @@
-title: "Flutter Test"
+title: Flutter Test
 summary: |-
   Performs any test in a Flutter project.
 
@@ -45,11 +45,11 @@ toolkit:
     package_name: github.com/bitrise-steplib/bitrise-step-flutter-test
 
 inputs:
-  - project_location: "$BITRISE_SOURCE_DIR"
+  - project_location: $BITRISE_SOURCE_DIR
     opts:
-      title: "Project Location"
-      summary: "The root dir of your Flutter project."
-      description: "The root dir of your Flutter project."
+      title: Project Location
+      summary: The root dir of your Flutter project.
+      description: The root dir of your Flutter project.
       is_required: true
   - bitrise_test_result_dir: $BITRISE_TEST_RESULT_DIR
     opts:
@@ -57,9 +57,9 @@ inputs:
       description: Root directory for all test results created by the Bitrise CLI
       is_required: true
       is_dont_change_value: true
-  - generate_code_coverage_files: "no"
+  - generate_code_coverage_files: no
     opts:
-      title: "Generate code coverage files?"
+      title: Generate code coverage files?
       description: |-
         In case of `generate_code_coverage_files: "yes"`
         `flutter test` gets `--coverage` passed
@@ -69,13 +69,13 @@ inputs:
       is_required: true
   - additional_params:
     opts:
-      title: "Additional parameters"
-      summary: "The flags from this input field are appended to the `flutter test` command."
-      description: "The flags from this input field are appended to the `flutter test` command."
+      title: Additional parameters
+      summary: The flags from this input field are appended to the `flutter test` command.
+      description: The flags from this input field are appended to the `flutter test` command.
   - tests_path_pattern:
     opts:
-      title: "Test files pattern"
-      summary: "This pattern is used as the last argument appended to the `flutter test` command."
+      title: Test files pattern
+      summary: This pattern is used as the last argument appended to the `flutter test` command.
       description: |-
         The pattern from this input field is expanded and fed to the `flutter test` command.  
         Both * and ** glob patterns are supported. For example, `lib/**/*_test.dart`.
