@@ -2,6 +2,24 @@ format_version: "11"
 default_step_lib_source: https://github.com/bitrise-io/bitrise-steplib.git
 
 workflows:
+  sample:
+    steps:
+    - script:
+        inputs:
+        - content: |-
+            #!/bin/env bash
+            set -ex
+            rm -rf ./_tmp
+    - git::https://github.com/bitrise-steplib/bitrise-step-simple-git-clone.git:
+        inputs:
+        - repository_url: https://github.com/bitrise-samples/sample-apps-flutter-ios-android.git
+        - branch: master
+        - clone_into_dir: ./_tmp
+    - path::./:
+        inputs:
+        - project_location: ./_tmp
+        - generate_code_coverage_files: "yes"
+
   check:
     steps:
     - git::https://github.com/bitrise-steplib/steps-check.git: {}
