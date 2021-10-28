@@ -97,7 +97,8 @@ workflows:
   _validate_coverage:
     steps:
     - script:
-        run_if: '{{enveq "GENERATE_CODE_COVERAGE_FILES" "yes"}}'
+        run_if: |-
+          {{ enveq "GENERATE_CODE_COVERAGE_FILES" "yes" }}
         title: Check for coverage output
         inputs:
         - content: |-
