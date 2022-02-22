@@ -48,24 +48,24 @@ func (r realTestExecutor) executeTest(cfg config, additionalParams []string) (by
 	fmt.Println()
 
 	if err := testCmd.start(); err != nil {
-		r.interrupt.failWithMessage("Running command failed, error: %s", err)
+		r.interrupt.failWithMessage("Run: test command failed: %s", err)
 	}
 
 	if err := junitCmd.start(); err != nil {
-		r.interrupt.failWithMessage("Converting test results to junit format failed, error: %s", err)
+		r.interrupt.failWithMessage("Run: converting test results to junit format failed: %s", err)
 	}
 
 	if err := testCmd.wait(); err != nil {
-		log.Errorf("Completing test command failed, error: %s", err)
+		log.Errorf("Run: completing test command failed: %s", err)
 		testExecutionFailed = true
 	}
 
 	if err := pw.Close(); err != nil {
-		r.interrupt.failWithMessage("Closing pipe failed, error: %s", err)
+		r.interrupt.failWithMessage("Run: closing pipe failed: %s", err)
 	}
 
 	if err := junitCmd.wait(); err != nil {
-		r.interrupt.failWithMessage("Completing conversion command failed, error: %s", err)
+		r.interrupt.failWithMessage("Run: completing conversion command failed: %s", err)
 	}
 	return jsonBuffer, testExecutionFailed
 }

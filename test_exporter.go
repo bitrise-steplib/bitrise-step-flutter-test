@@ -44,20 +44,20 @@ func (r realTestExporter) exportDeployPath(testResultDeployPath string) {
 func (r realTestExporter) exportTestResultsToResultPath(cfg config, testResultPath string) {
 	exporter := testresultexport.NewExporter(cfg.TestResultsDir)
 	if err := exporter.ExportTest(testName, testResultPath); err != nil {
-		r.interrupt.failWithMessage("Failed to export test result: %s", err)
+		r.interrupt.failWithMessage("Export outputs: failed to export test result: %s", err)
 	}
 }
 
 func (r realTestExporter) exportCoverage(projectLocation string) {
 	covData, err := ioutil.ReadFile(path.Join(projectLocation, coverageRelativePath))
 	if err != nil {
-		r.interrupt.failWithMessage("Failed to open %s", coverageRelativePath)
+		r.interrupt.failWithMessage("Export outputs: failed to open %s", coverageRelativePath)
 	}
 
 	covDeployPath := copyBufferToDeployDir(covData, coverageFileName, r.interrupt)
 
 	if err := tools.ExportEnvironmentWithEnvman("BITRISE_FLUTTER_COVERAGE_PATH", covDeployPath); err != nil {
-		r.interrupt.failWithMessage("Failed to export: BITRISE_FLUTTER_COVERAGE_PATH, error: %s", err)
+		r.interrupt.failWithMessage("Export outputs: failed to export $BITRISE_FLUTTER_COVERAGE_PATH: %s", err)
 	}
 
 	log.Donef("Test coverage file exported as $BITRISE_FLUTTER_COVERAGE_PATH")
@@ -66,12 +66,12 @@ func (r realTestExporter) exportCoverage(projectLocation string) {
 func copyBufferToDeployDir(buffer []byte, logFileName string, interrupt interrupt) string {
 	deployDir := os.Getenv("BITRISE_DEPLOY_DIR")
 	if deployDir == "" {
-		interrupt.failWithMessage("no BITRISE_DEPLOY_DIR found")
+		interrupt.failWithMessage("Export outputs: no $BITRISE_DEPLOY_DIR found")
 	}
 	deployPth := filepath.Join(deployDir, logFileName)
 
 	if err := ioutil.WriteFile(deployPth, buffer, 0664); err != nil {
-		interrupt.failWithMessage("failed to write buffer to (%s), error: %s", deployPth, err)
+		interrupt.failWithMessage("Export outputs: failed to write buffer to %s: %s", deployPth, err)
 	}
 	return deployPth
 }
