@@ -33,9 +33,9 @@ func (r realCommandBuilder) ensureToJunitAvailable(cfg config) {
 
 		if err := junitInstallCmd.Run(); err != nil {
 			if errorutil.IsExitStatusError(err) {
-				r.interrupt.failWithMessage("Command `tojunit` failed to install, error: %s", err)
+				r.interrupt.failWithMessage("Install dependencies: command `tojunit` failed to install: %s", err)
 			}
-			r.interrupt.failWithMessage("Failed to run command `tojunit`, %s", err)
+			r.interrupt.failWithMessage("Install dependencies: failed to run command `tojunit`: %s", err)
 		}
 	}
 }

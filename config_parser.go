@@ -1,13 +1,14 @@
 package main
 
 import (
+	"os"
+	"path/filepath"
+	"strings"
+
 	"github.com/bitrise-io/go-steputils/stepconf"
 	"github.com/bitrise-io/go-utils/log"
 	"github.com/bmatcuk/doublestar/v3"
 	"github.com/kballard/go-shellquote"
-	"os"
-	"path/filepath"
-	"strings"
 )
 
 type configParser interface {
@@ -23,7 +24,7 @@ type realConfigParser struct {
 func (r realConfigParser) parseConfig() config {
 	var cfg config
 	if err := stepconf.Parse(&cfg); err != nil {
-		r.interrupt.failWithMessage("Issue with input: %s", err)
+		r.interrupt.failWithMessage("Process config: failed to parse step inputs: %s", err)
 	}
 	return cfg
 }
@@ -47,7 +48,7 @@ func (r realConfigParser) expandTestsPathPattern(projectLocation string, testsPa
 func (r realConfigParser) parseAdditionalParams(additionalParams string) []string {
 	ap, err := shellquote.Split(additionalParams)
 	if err != nil {
-		r.interrupt.failWithMessage("Failed to parse additional parameters, error: %s", err)
+		r.interrupt.failWithMessage("Process config: failed to parse additional parameters: %s", err)
 	}
 	return ap
 }
