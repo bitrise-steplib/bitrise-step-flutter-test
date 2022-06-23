@@ -13,11 +13,9 @@ description: |-
   3. You can append additional flags to the default `flutter test` command in the **Additional parameters** field.
   4. Select 'yes' in the **Generate code coverage files** input to get detailed analysis of your code.
 
-
   ### Troubleshooting
   Make sure the **Project Location** input of the Flutter Test Step is correct.
   The default value is the Environment Variable (Env Var) created for your Flutter project’s location.
-
 
   ### Useful links
   - [Getting started with Flutter](https://devcenter.bitrise.io/getting-started/getting-started-with-flutter-apps/)
