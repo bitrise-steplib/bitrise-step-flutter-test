@@ -13,7 +13,6 @@ import (
 )
 
 const (
-	testName               = "Flutter test results"
 	testResultJSONFileName = "flutter_json_test_results.json"
 	coverageFileName       = "flutter_coverage_lcov.info"
 	coverageRelativePath   = "./coverage/lcov.info"
@@ -43,7 +42,7 @@ func (r realTestExporter) exportDeployPath(testResultDeployPath string) {
 
 func (r realTestExporter) exportTestResultsToResultPath(cfg config, testResultPath string) {
 	exporter := testresultexport.NewExporter(cfg.TestResultsDir)
-	if err := exporter.ExportTest(testName, testResultPath); err != nil {
+	if err := exporter.ExportTest(cfg.TestResultsName, testResultPath); err != nil {
 		r.interrupt.failWithMessage("Export outputs: failed to export test result: %s", err)
 	}
 }

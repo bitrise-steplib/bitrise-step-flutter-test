@@ -55,6 +55,10 @@ inputs:
     description: Root directory for all test results created by the Bitrise CLI
     is_required: true
     is_dont_change_value: true
+- bitrise_test_result_name: Flutter test results
+  opts:
+    title: Name of created test results collection
+    is_required: false
 - generate_code_coverage_files: "no"
   opts:
     title: Generate code coverage files?

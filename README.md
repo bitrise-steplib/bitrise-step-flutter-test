@@ -47,6 +47,7 @@ You can also run this step directly with [Bitrise CLI](https://github.com/bitris
 | --- | --- | --- | --- |
 | `project_location` | The root dir of your Flutter project. | required | `$BITRISE_SOURCE_DIR` |
 | `bitrise_test_result_dir` | Root directory for all test results created by the Bitrise CLI | required | `$BITRISE_TEST_RESULT_DIR` |
+| `bitrise_test_result_name` | Name of the created test result collection |  | `Flutter test results` |
 | `generate_code_coverage_files` | In case of `generate_code_coverage_files: "yes"` `flutter test` gets `--coverage` passed | required | `false` |
 | `additional_params` | The flags from this input field are appended to the `flutter test` command. |  |  |
 | `tests_path_pattern` | The pattern from this input field is expanded and fed to the `flutter test` command.   Both * and ** glob patterns are supported. For example, `lib/**/*_test.dart`. |  |  |
