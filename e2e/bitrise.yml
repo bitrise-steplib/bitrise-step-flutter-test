@@ -5,7 +5,7 @@ app:
   envs:
   - SAMPLE_APP_URL: https://github.com/bitrise-io/Bitrise-Flutter-Sample.git
   - SAMPLE_APP_BRANCH: main
-  - FLUTTER_VERSION: 3.7.1 # Flutter 3.10 brings Dart 3.0, this sample app is not compatible with that yet
+  - FLUTTER_VERSION: 3.7.1  # Flutter 3.10 brings Dart 3.0, this sample app is not compatible with that yet
   - ORIGIN_SOURCE_DIR: $BITRISE_SOURCE_DIR
   - PROJECT_LOCATION: $BITRISE_SOURCE_DIR/_tmp
   - GENERATE_CODE_COVERAGE_FILES: "no"
