@@ -3,8 +3,8 @@ default_step_lib_source: https://github.com/bitrise-io/bitrise-steplib.git
 
 app:
   envs:
-  - SAMPLE_APP_URL: https://github.com/bitrise-samples/sample-apps-flutter-ios-android.git
-  - SAMPLE_APP_BRANCH: master
+  - SAMPLE_APP_URL: https://github.com/bitrise-io/Bitrise-Flutter-Sample.git
+  - SAMPLE_APP_BRANCH: main
   - ORIGIN_SOURCE_DIR: $BITRISE_SOURCE_DIR
   - PROJECT_LOCATION: $BITRISE_SOURCE_DIR/_tmp
   - GENERATE_CODE_COVERAGE_FILES: "no"
