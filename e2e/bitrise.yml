@@ -3,8 +3,9 @@ default_step_lib_source: https://github.com/bitrise-io/bitrise-steplib.git
 
 app:
   envs:
-  - SAMPLE_APP_URL: https://github.com/bitrise-samples/sample-apps-flutter-ios-android.git
-  - SAMPLE_APP_BRANCH: master
+  - SAMPLE_APP_URL: https://github.com/bitrise-io/Bitrise-Flutter-Sample.git
+  - SAMPLE_APP_BRANCH: main
+  - FLUTTER_VERSION: 3.7.1  # Flutter 3.10 brings Dart 3.0, this sample app is not compatible with that yet
   - ORIGIN_SOURCE_DIR: $BITRISE_SOURCE_DIR
   - PROJECT_LOCATION: $BITRISE_SOURCE_DIR/_tmp
   - GENERATE_CODE_COVERAGE_FILES: "no"
@@ -24,7 +25,7 @@ workflows:
 
   test_not_root_project_with_codecoverage:
     envs:
-    - SAMPLE_APP_BRANCH: not_root_project
+    - SAMPLE_APP_BRANCH: e2e-test-src-subfolder
     - PROJECT_LOCATION: $ORIGIN_SOURCE_DIR/_tmp/src
     - GENERATE_CODE_COVERAGE_FILES: "yes"
     title: Run with code coverage for not root project
@@ -62,7 +63,9 @@ workflows:
         - clone_into_dir: $BITRISE_SOURCE_DIR
         - repository_url: $SAMPLE_APP_URL
         - branch: $SAMPLE_APP_BRANCH
-    - flutter-installer: { }
+    - flutter-installer:
+        inputs:
+        - version: $FLUTTER_VERSION
     - path::./:
         title: Execute step
         inputs:
