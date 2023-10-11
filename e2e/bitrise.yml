@@ -25,7 +25,7 @@ workflows:
 
   test_not_root_project_with_codecoverage:
     envs:
-    - SAMPLE_APP_BRANCH: not_root_project
+    - SAMPLE_APP_BRANCH: e2e-test-src-subfolder
     - PROJECT_LOCATION: $ORIGIN_SOURCE_DIR/_tmp/src
     - GENERATE_CODE_COVERAGE_FILES: "yes"
     title: Run with code coverage for not root project
