@@ -12,6 +12,7 @@ type config struct {
 	TestsPathPattern          string `env:"tests_path_pattern"`
 	ProjectLocation           string `env:"project_location,dir"`
 	TestResultsDir            string `env:"bitrise_test_result_dir,dir"`
+	TestResultsName           string `env:"bitrise_test_result_name"`
 	GenerateCodeCoverageFiles bool   `env:"generate_code_coverage_files,opt[yes,no]"`
 }
 
