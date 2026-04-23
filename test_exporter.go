@@ -2,12 +2,12 @@ package main
 
 import (
 	"bytes"
-	"io/ioutil"
 	"os"
 	"path"
 	"path/filepath"
 
 	"github.com/bitrise-io/go-steputils/tools"
+	//nolint:staticcheck // STEP-2164: v2 testresultexport is an intentional deprecated shim for this consumer.
 	"github.com/bitrise-io/go-steputils/v2/testresultexport"
 	"github.com/bitrise-io/go-utils/log"
 	"github.com/bitrise-io/go-utils/v2/fileutil"
@@ -50,7 +50,7 @@ func (r realTestExporter) exportTestResultsToResultPath(cfg config, testResultPa
 }
 
 func (r realTestExporter) exportCoverage(projectLocation string) {
-	covData, err := ioutil.ReadFile(path.Join(projectLocation, coverageRelativePath))
+	covData, err := os.ReadFile(path.Join(projectLocation, coverageRelativePath))
 	if err != nil {
 		r.interrupt.failWithMessage("Export outputs: failed to open %s", coverageRelativePath)
 	}
@@ -71,7 +71,7 @@ func copyBufferToDeployDir(buffer []byte, logFileName string, interrupt interrup
 	}
 	deployPth := filepath.Join(deployDir, logFileName)
 
-	if err := ioutil.WriteFile(deployPth, buffer, 0664); err != nil {
+	if err := os.WriteFile(deployPth, buffer, 0664); err != nil {
 		interrupt.failWithMessage("Export outputs: failed to write buffer to %s: %s", deployPth, err)
 	}
 	return deployPth
