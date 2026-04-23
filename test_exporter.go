@@ -7,9 +7,10 @@ import (
 	"path"
 	"path/filepath"
 
-	"github.com/bitrise-io/go-steputils/testresultexport"
 	"github.com/bitrise-io/go-steputils/tools"
+	"github.com/bitrise-io/go-steputils/v2/testresultexport"
 	"github.com/bitrise-io/go-utils/log"
+	"github.com/bitrise-io/go-utils/v2/fileutil"
 )
 
 const (
@@ -42,7 +43,7 @@ func (r realTestExporter) exportDeployPath(testResultDeployPath string) {
 }
 
 func (r realTestExporter) exportTestResultsToResultPath(cfg config, testResultPath string) {
-	exporter := testresultexport.NewExporter(cfg.TestResultsDir)
+	exporter := testresultexport.NewExporter(cfg.TestResultsDir, fileutil.NewFileManager())
 	if err := exporter.ExportTest(testName, testResultPath); err != nil {
 		r.interrupt.failWithMessage("Export outputs: failed to export test result: %s", err)
 	}
