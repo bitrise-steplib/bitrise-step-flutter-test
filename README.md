@@ -8,7 +8,7 @@ Performs any test in a Flutter project.
 <summary>Description</summary>
 
 
-If you have tests in your repository, and selected `yes` when prompted during app creation, the primary Workflow will include the **Flutter Test** Step by default. 
+If you have tests in your repository, and selected `yes` when prompted during app creation, the primary Workflow will include the **Flutter Test** Step by default.
 If you add tests to your app later, add the **Flutter Test** Step to your Workflow manually. The Step runs the `flutter test` command with the specified flags. To check the available flags, open a command line interface on your own machine and run `flutter test --help`.
 
 ### Configuring the Step
@@ -17,11 +17,9 @@ If you add tests to your app later, add the **Flutter Test** Step to your Workfl
 3. You can append additional flags to the default `flutter test` command in the **Additional parameters** field.
 4. Select 'yes' in the **Generate code coverage files** input to get detailed analysis of your code.
 
-
 ### Troubleshooting
-Make sure the **Project Location** input of the Flutter Test Step is correct. 
+Make sure the **Project Location** input of the Flutter Test Step is correct.
 The default value is the Environment Variable (Env Var) created for your Flutter project’s location.
-
 
 ### Useful links
 - [Getting started with Flutter](https://devcenter.bitrise.io/getting-started/getting-started-with-flutter-apps/)
@@ -34,7 +32,7 @@ The default value is the Environment Variable (Env Var) created for your Flutter
 
 ## 🧩 Get started
 
-Add this step directly to your workflow in the [Bitrise Workflow Editor](https://devcenter.bitrise.io/steps-and-workflows/steps-and-workflows-index/).
+Add this step directly to your workflow in the [Bitrise Workflow Editor](https://docs.bitrise.io/en/bitrise-ci/workflows-and-pipelines/steps/adding-steps-to-a-workflow.html).
 
 You can also run this step directly with [Bitrise CLI](https://github.com/bitrise-io/bitrise).
 
@@ -47,9 +45,9 @@ You can also run this step directly with [Bitrise CLI](https://github.com/bitris
 | --- | --- | --- | --- |
 | `project_location` | The root dir of your Flutter project. | required | `$BITRISE_SOURCE_DIR` |
 | `bitrise_test_result_dir` | Root directory for all test results created by the Bitrise CLI | required | `$BITRISE_TEST_RESULT_DIR` |
-| `generate_code_coverage_files` | In case of `generate_code_coverage_files: "yes"` `flutter test` gets `--coverage` passed | required | `false` |
+| `generate_code_coverage_files` | In case of `generate_code_coverage_files: "yes"` `flutter test` gets `--coverage` passed | required | `no` |
 | `additional_params` | The flags from this input field are appended to the `flutter test` command. |  |  |
-| `tests_path_pattern` | The pattern from this input field is expanded and fed to the `flutter test` command.   Both * and ** glob patterns are supported. For example, `lib/**/*_test.dart`. |  |  |
+| `tests_path_pattern` | The pattern from this input field is expanded and fed to the `flutter test` command. Both * and ** glob patterns are supported. For example, `lib/**/*_test.dart`. |  |  |
 </details>
 
 <details>
@@ -65,9 +63,8 @@ You can also run this step directly with [Bitrise CLI](https://github.com/bitris
 
 We welcome [pull requests](https://github.com/bitrise-steplib/bitrise-step-flutter-test/pulls) and [issues](https://github.com/bitrise-steplib/bitrise-step-flutter-test/issues) against this repository.
 
-For pull requests, work on your changes in a forked repository and use the Bitrise CLI to [run step tests locally](https://devcenter.bitrise.io/bitrise-cli/run-your-first-build/).
+For pull requests, work on your changes in a forked repository and use the Bitrise CLI to [run step tests locally](https://docs.bitrise.io/en/bitrise-ci/bitrise-cli/running-your-first-local-build-with-the-cli.html).
 
 Learn more about developing steps:
 
-- [Create your own step](https://devcenter.bitrise.io/contributors/create-your-own-step/)
-- [Testing your Step](https://devcenter.bitrise.io/contributors/testing-and-versioning-your-steps/)
+- [Create your own step](https://docs.bitrise.io/en/bitrise-ci/workflows-and-pipelines/developing-your-own-bitrise-step/developing-a-new-step.html)
