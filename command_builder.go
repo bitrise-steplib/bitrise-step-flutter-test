@@ -55,5 +55,7 @@ func (r realCommandBuilder) buildTestCmd(generateCoverage bool, additionalParams
 
 func (r realCommandBuilder) buildJunitCmd(cfg config) commandWrapper {
 	r.ensureToJunitAvailable(cfg)
-	return realCommandWrapper{cmd: exec.Command("tojunit", []string{"--output", testResultFileName}...)}
+	// Use "dart pub global run" instead of invoking tojunit by name so that the
+	// executable is found even when $HOME/.pub-cache/bin is not on $PATH (Linux).
+	return realCommandWrapper{cmd: exec.Command("dart", []string{"pub", "global", "run", "junitreport:tojunit", "--output", testResultFileName}...)}
 }
