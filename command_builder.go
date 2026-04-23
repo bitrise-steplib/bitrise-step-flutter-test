@@ -20,23 +20,26 @@ type realCommandBuilder struct {
 }
 
 func (r realCommandBuilder) ensureToJunitAvailable(cfg config) {
-	if _, err := exec.LookPath("tojunit"); err != nil {
-		log.Infof("Command `tojunit` not found, installing...")
-		junitInstallCmd := command.New("flutter", []string{"pub", "global", "activate", "junitreport"}...).
-			SetStdout(os.Stdout).
-			SetStderr(os.Stderr).
-			SetDir(cfg.ProjectLocation)
+	// Always (re)activate junitreport to ensure the compiled binary and lock file
+	// are valid for the current Dart SDK version. A pre-installed tojunit binary
+	// compiled with a different Dart version causes "Can't load Kernel binary"
+	// errors at runtime; a stale lock file (e.g. a transitive dep was bumped in
+	// the pub cache) triggers exit-65 from dart pub. Both are cured by reactivating.
+	log.Infof("Activating `tojunit`...")
+	junitInstallCmd := command.New("dart", []string{"pub", "global", "activate", "--overwrite", "junitreport"}...).
+		SetStdout(os.Stdout).
+		SetStderr(os.Stderr).
+		SetDir(cfg.ProjectLocation)
 
-		fmt.Println()
-		log.Donef(fmt.Sprintf("$ %s", junitInstallCmd.PrintableCommandArgs()))
-		fmt.Println()
+	fmt.Println()
+	log.Donef(fmt.Sprintf("$ %s", junitInstallCmd.PrintableCommandArgs()))
+	fmt.Println()
 
-		if err := junitInstallCmd.Run(); err != nil {
-			if errorutil.IsExitStatusError(err) {
-				r.interrupt.failWithMessage("Install dependencies: command `tojunit` failed to install: %s", err)
-			}
-			r.interrupt.failWithMessage("Install dependencies: failed to run command `tojunit`: %s", err)
+	if err := junitInstallCmd.Run(); err != nil {
+		if errorutil.IsExitStatusError(err) {
+			r.interrupt.failWithMessage("Install dependencies: command `tojunit` failed to install: %s", err)
 		}
+		r.interrupt.failWithMessage("Install dependencies: failed to run command `tojunit`: %s", err)
 	}
 }
 
