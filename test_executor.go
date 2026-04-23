@@ -55,18 +55,27 @@ func (r realTestExecutor) executeTest(cfg config, additionalParams []string) (by
 		r.interrupt.failWithMessage("Run: converting test results to junit format failed: %s", err)
 	}
 
-	if err := testCmd.wait(); err != nil {
+	// Wait for testCmd concurrently and close pw when done so junitCmd receives EOF.
+	// This prevents a deadlock where junitCmd exits early, pw.Write() blocks because
+	// pr is no longer being read, and testCmd.Wait() never returns.
+	testErrCh := make(chan error, 1)
+	go func() {
+		testErrCh <- testCmd.wait()
+		pw.Close()
+	}()
+
+	junitErr := junitCmd.wait()
+	pr.Close() // unblocks pw.Write() if junitCmd exited before testCmd finished
+
+	if junitErr != nil {
+		r.interrupt.failWithMessage("Run: completing conversion command failed: %s", junitErr)
+	}
+
+	if err := <-testErrCh; err != nil {
 		log.Errorf("Run: completing test command failed: %s", err)
 		testExecutionFailed = true
 	}
 
-	if err := pw.Close(); err != nil {
-		r.interrupt.failWithMessage("Run: closing pipe failed: %s", err)
-	}
-
-	if err := junitCmd.wait(); err != nil {
-		r.interrupt.failWithMessage("Run: completing conversion command failed: %s", err)
-	}
 	return jsonBuffer, testExecutionFailed
 }
 
