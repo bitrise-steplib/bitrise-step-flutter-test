@@ -17,6 +17,9 @@ If you add tests to your app later, add the **Flutter Test** Step to your Workfl
 3. You can append additional flags to the default `flutter test` command in the **Additional parameters** field.
 4. Select 'yes' in the **Generate code coverage files** input to get detailed analysis of your code.
 
+### Test output in the build log
+On Flutter 3.10 and newer the Step prints the normal, human-readable `flutter test` output to the build log, and you can control its verbosity with a `--reporter` flag (for example `--reporter expanded`) in the **Additional parameters** field. On older Flutter versions the log falls back to the raw machine JSON stream. The machine-readable JSON needed for the JUnit test report and the `BITRISE_FLUTTER_TESTRESULT_PATH` output is collected separately, so it does not affect what you see in the log. Do not pass `--file-reporter` in **Additional parameters** — the Step manages it internally.
+
 ### Troubleshooting
 Make sure the **Project Location** input of the Flutter Test Step is correct.
 The default value is the Environment Variable (Env Var) created for your Flutter project’s location.
@@ -46,7 +49,7 @@ You can also run this step directly with [Bitrise CLI](https://github.com/bitris
 | `project_location` | The root dir of your Flutter project. | required | `$BITRISE_SOURCE_DIR` |
 | `bitrise_test_result_dir` | Root directory for all test results created by the Bitrise CLI | required | `$BITRISE_TEST_RESULT_DIR` |
 | `generate_code_coverage_files` | In case of `generate_code_coverage_files: "yes"` `flutter test` gets `--coverage` passed | required | `no` |
-| `additional_params` | The flags from this input field are appended to the `flutter test` command. |  |  |
+| `additional_params` | The flags from this input field are appended to the `flutter test` command.  For example, pass `--reporter expanded` to get more detailed, human-readable test output in the build log (Flutter 3.10+). Do not pass `--file-reporter`; the Step sets it up internally. |  |  |
 | `tests_path_pattern` | The pattern from this input field is expanded and fed to the `flutter test` command. Both * and ** glob patterns are supported. For example, `lib/**/*_test.dart`. |  |  |
 </details>
 

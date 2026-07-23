@@ -1,11 +1,17 @@
 format_version: "11"
 default_step_lib_source: https://github.com/bitrise-io/bitrise-steplib.git
 
+# Flutter is installed through Bitrise's built-in mise integration (the `tools` field),
+# which puts `flutter` and `dart` on $PATH for every step in the build.
+# Pinned to 3.7.1 because Flutter 3.10 brings Dart 3.0, which the sample app is not compatible with yet.
+# (This also exercises the Step's pre-3.10 --machine fallback path end to end.)
+tools:
+  flutter: 3.7.1
+
 app:
   envs:
   - SAMPLE_APP_URL: https://github.com/bitrise-io/Bitrise-Flutter-Sample.git
   - SAMPLE_APP_BRANCH: main
-  - FLUTTER_VERSION: 3.7.1  # Flutter 3.10 brings Dart 3.0, this sample app is not compatible with that yet
   - ORIGIN_SOURCE_DIR: $BITRISE_SOURCE_DIR
   - PROJECT_LOCATION: $BITRISE_SOURCE_DIR/_tmp
   - GENERATE_CODE_COVERAGE_FILES: "no"
@@ -31,6 +37,30 @@ workflows:
     title: Run with code coverage for not root project
     after_run:
     - _common
+
+  # Exercises the modern --file-reporter path (Flutter >= 3.10). The shared sample app
+  # is pinned to Dart < 3.0, so this workflow uses the sample's `dart-3` branch and
+  # overrides the Flutter version to 3.10+ via workflow-level `tools`, reusing _common.
+  test_file_reporter_flutter_3_10_plus:
+    envs:
+    - SAMPLE_APP_BRANCH: dart-3
+    title: Run on Flutter 3.10+ (human-readable --file-reporter path)
+    tools:
+      flutter: 3.32.1
+    after_run:
+    - _common
+    steps:
+    - script:
+        title: Assert this Flutter supports --file-reporter
+        description: |-
+          Guards the purpose of this workflow: if the `tools` override did not apply
+          (or a future Flutter drops the flag), the Step would silently fall back to
+          the legacy --machine path and this workflow would pass without covering it.
+        inputs:
+        - content: |-
+            #!/bin/bash
+            set -ex
+            flutter test --help | grep -q -- '--file-reporter'
 
   _common:
     after_run:
@@ -63,9 +93,6 @@ workflows:
         - clone_into_dir: $BITRISE_SOURCE_DIR
         - repository_url: $SAMPLE_APP_URL
         - branch: $SAMPLE_APP_BRANCH
-    - flutter-installer:
-        inputs:
-        - version: $FLUTTER_VERSION
     - path::./:
         title: Execute step
         inputs:
@@ -90,10 +117,10 @@ workflows:
             fi
 
             echo "Checking for json test report data at $BITRISE_FLUTTER_TESTRESULT_PATH"
-            if [ -f "$BITRISE_FLUTTER_TESTRESULT_PATH" ]; then
-              echo "JSON report data exists."
+            if [ -s "$BITRISE_FLUTTER_TESTRESULT_PATH" ]; then
+              echo "JSON report data exists and is non-empty."
             else
-              echo "JSON report data does not exist."
+              echo "JSON report data is missing or empty."
               exit 1
             fi
 

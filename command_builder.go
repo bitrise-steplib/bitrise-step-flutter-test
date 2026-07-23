@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
+	"strings"
 
 	"github.com/bitrise-io/go-utils/command"
 	"github.com/bitrise-io/go-utils/errorutil"
@@ -11,8 +12,11 @@ import (
 )
 
 type commandBuilder interface {
-	buildTestCmd(generateCoverage bool, additionalParams []string) commandWrapper
-	buildJunitCmd(cfg config) commandWrapper
+	supportsFileReporter() bool
+	buildTestCmd(generateCoverage bool, fileReporterPath string, additionalParams []string) commandWrapper
+	buildJunitCmd(cfg config, jsonReportPath string) commandWrapper
+	buildLegacyTestCmd(generateCoverage bool, additionalParams []string) commandWrapper
+	buildLegacyJunitCmd(cfg config) commandWrapper
 }
 
 type realCommandBuilder struct {
@@ -43,7 +47,47 @@ func (r realCommandBuilder) ensureToJunitAvailable(cfg config) {
 	}
 }
 
-func (r realCommandBuilder) buildTestCmd(generateCoverage bool, additionalParams []string) commandWrapper {
+// supportsFileReporter reports whether the installed `flutter test` accepts the
+// --file-reporter flag. It was added in Flutter 3.10; on older versions the step
+// falls back to piping `flutter test --machine` into tojunit. We probe the actual
+// `flutter test --help` output rather than parsing versions so custom channels and
+// forks are handled correctly. On any error we assume it is unsupported.
+func (r realCommandBuilder) supportsFileReporter() bool {
+	out, err := exec.Command("flutter", "test", "--help").CombinedOutput()
+	if err != nil {
+		log.Warnf("Could not determine whether `flutter test` supports --file-reporter (%s); falling back to --machine.", err)
+		return false
+	}
+	return strings.Contains(string(out), "--file-reporter")
+}
+
+// buildTestCmd builds the modern test command. It writes the machine-readable JSON to
+// a file via --file-reporter (instead of --machine) so that stdout keeps the normal,
+// human-readable reporter output. With --reporter unset, Flutter auto-selects a
+// CI-friendly reporter (expanded on non-TTY, github on GitHub Actions); users can
+// still override it through additionalParams.
+func (r realCommandBuilder) buildTestCmd(generateCoverage bool, fileReporterPath string, additionalParams []string) commandWrapper {
+	params := []string{"test", "--file-reporter=json:" + fileReporterPath}
+	if generateCoverage {
+		params = append(params, "--coverage")
+	}
+	params = append(params, additionalParams...)
+
+	return realCommandWrapper{cmd: exec.Command("flutter", params...)}
+}
+
+// buildJunitCmd converts the flutter test JSON report at jsonReportPath into JUnit XML.
+func (r realCommandBuilder) buildJunitCmd(cfg config, jsonReportPath string) commandWrapper {
+	r.ensureToJunitAvailable(cfg)
+	// Use "dart pub global run" instead of invoking tojunit by name so that the
+	// executable is found even when $HOME/.pub-cache/bin is not on $PATH (Linux).
+	// tojunit reads the JSON from --input and writes the JUnit XML to --output.
+	return realCommandWrapper{cmd: exec.Command("dart", []string{"pub", "global", "run", "junitreport:tojunit", "--input", jsonReportPath, "--output", testResultFileName}...)}
+}
+
+// buildLegacyTestCmd builds the test command for Flutter versions without --file-reporter
+// (< 3.10): `flutter test --machine`, whose JSON stdout is piped straight into tojunit.
+func (r realCommandBuilder) buildLegacyTestCmd(generateCoverage bool, additionalParams []string) commandWrapper {
 	params := []string{"test", "--machine"}
 	if generateCoverage {
 		params = append(params, "--coverage")
@@ -53,7 +97,8 @@ func (r realCommandBuilder) buildTestCmd(generateCoverage bool, additionalParams
 	return realCommandWrapper{cmd: exec.Command("flutter", params...)}
 }
 
-func (r realCommandBuilder) buildJunitCmd(cfg config) commandWrapper {
+// buildLegacyJunitCmd converts the flutter test JSON read from stdin into JUnit XML.
+func (r realCommandBuilder) buildLegacyJunitCmd(cfg config) commandWrapper {
 	r.ensureToJunitAvailable(cfg)
 	// Use "dart pub global run" instead of invoking tojunit by name so that the
 	// executable is found even when $HOME/.pub-cache/bin is not on $PATH (Linux).
