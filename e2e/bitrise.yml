@@ -38,6 +38,30 @@ workflows:
     after_run:
     - _common
 
+  # Exercises the modern --file-reporter path (Flutter >= 3.10). The shared sample app
+  # is pinned to Dart < 3.0, so this workflow uses the sample's `dart-3` branch and
+  # overrides the Flutter version to 3.10+ via workflow-level `tools`, reusing _common.
+  test_file_reporter_flutter_3_10_plus:
+    envs:
+    - SAMPLE_APP_BRANCH: dart-3
+    title: Run on Flutter 3.10+ (human-readable --file-reporter path)
+    tools:
+      flutter: 3.32.1
+    after_run:
+    - _common
+    steps:
+    - script:
+        title: Assert this Flutter supports --file-reporter
+        description: |-
+          Guards the purpose of this workflow: if the `tools` override did not apply
+          (or a future Flutter drops the flag), the Step would silently fall back to
+          the legacy --machine path and this workflow would pass without covering it.
+        inputs:
+        - content: |-
+            #!/bin/bash
+            set -ex
+            flutter test --help | grep -q -- '--file-reporter'
+
   _common:
     after_run:
     - _assert_output
@@ -93,10 +117,10 @@ workflows:
             fi
 
             echo "Checking for json test report data at $BITRISE_FLUTTER_TESTRESULT_PATH"
-            if [ -f "$BITRISE_FLUTTER_TESTRESULT_PATH" ]; then
-              echo "JSON report data exists."
+            if [ -s "$BITRISE_FLUTTER_TESTRESULT_PATH" ]; then
+              echo "JSON report data exists and is non-empty."
             else
-              echo "JSON report data does not exist."
+              echo "JSON report data is missing or empty."
               exit 1
             fi
 
