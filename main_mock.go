@@ -95,17 +95,33 @@ func (t testWrapperExecutor) exportTestResults(cfg config, b bytes.Buffer) {
 }
 
 type testCommandBuilder struct {
-	testFails bool
+	testFails             bool
+	fileReporterSupported bool
 }
 
-func (t testCommandBuilder) buildTestCmd(generateCoverage bool, additionalParams []string) commandWrapper {
+func (t testCommandBuilder) supportsFileReporter() bool {
+	return t.fileReporterSupported
+}
+
+func (t testCommandBuilder) buildTestCmd(generateCoverage bool, fileReporterPath string, additionalParams []string) commandWrapper {
 	if t.testFails {
 		return failingCmd()
 	}
 	return successCmd()
 }
 
-func (t testCommandBuilder) buildJunitCmd(config) commandWrapper {
+func (t testCommandBuilder) buildJunitCmd(config, string) commandWrapper {
+	return successCmd()
+}
+
+func (t testCommandBuilder) buildLegacyTestCmd(generateCoverage bool, additionalParams []string) commandWrapper {
+	if t.testFails {
+		return failingCmd()
+	}
+	return successCmd()
+}
+
+func (t testCommandBuilder) buildLegacyJunitCmd(config) commandWrapper {
 	return successCmd()
 }
 

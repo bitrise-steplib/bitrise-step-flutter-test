@@ -2,10 +2,42 @@ package main
 
 import (
 	"bytes"
+	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
 )
+
+func TestBuildTestCmdUsesFileReporterNotMachine(t *testing.T) {
+	builder := realCommandBuilder{}
+
+	cmd := builder.buildTestCmd(false, "/tmp/report.json", []string{"--reporter", "expanded"})
+	args := cmd.toModel().PrintableCommandArgs()
+
+	// --machine must be absent: it forces the JSON reporter and hides human-readable output.
+	assert.False(t, strings.Contains(args, "--machine"), "expected --machine to be absent, got: %s", args)
+	// The JSON is written to a file instead, leaving stdout for the human-readable reporter.
+	assert.True(t, strings.Contains(args, "--file-reporter=json:/tmp/report.json"), "expected --file-reporter, got: %s", args)
+	// A user-supplied reporter flag is passed through and now actually takes effect.
+	assert.True(t, strings.Contains(args, "expanded"), "expected additional params to be appended, got: %s", args)
+}
+
+func TestHasFileReporterArg(t *testing.T) {
+	tests := []struct {
+		name   string
+		params []string
+		want   bool
+	}{
+		{"absent", []string{"--reporter", "expanded"}, false},
+		{"equals form", []string{"--file-reporter=json:/tmp/r.json"}, true},
+		{"space form", []string{"--file-reporter", "json:/tmp/r.json"}, true},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			assert.Equal(t, tt.want, hasFileReporterArg(tt.params))
+		})
+	}
+}
 
 func TestResultsExportedWhenExecutionFails(t *testing.T) {
 	// Arrange
