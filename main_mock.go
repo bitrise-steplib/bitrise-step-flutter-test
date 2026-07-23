@@ -133,6 +133,14 @@ func setupFailingUnitTestsExecutor(interrupt interrupt, testResult *testResult) 
 	}, testResult: testResult}
 }
 
+func setupFailingFileReporterExecutor(interrupt interrupt, testResult *testResult) {
+	test = testWrapperExecutor{realTestExecutor: realTestExecutor{
+		interrupt:      interrupt,
+		commandBuilder: testCommandBuilder{testFails: true, fileReporterSupported: true},
+		testExporter:   mockTestExporter{testResult: testResult},
+	}, testResult: testResult}
+}
+
 type mockTestExporter struct {
 	testResult *testResult
 }

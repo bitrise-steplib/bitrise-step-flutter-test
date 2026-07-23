@@ -57,6 +57,25 @@ func TestResultsExportedWhenExecutionFails(t *testing.T) {
 	assert.Equal(t, true, result.stepFailed)
 }
 
+func TestResultsExportedWhenExecutionFailsOnFileReporterPath(t *testing.T) {
+	// Arrange
+	result := testResult{}
+	mi := mockInterrupt{testResult: &result}
+	ir = mi
+	parser = mockParser{}
+	setupFailingFileReporterExecutor(ir, &result)
+
+	// Act
+	main()
+
+	// Assert: even on the modern --file-reporter path, a failing test run still
+	// exports results and marks the step failed, without aborting mid-run.
+	assert.Equal(t, true, result.testResultsExported)
+	assert.Equal(t, true, result.coverageExported)
+	assert.Equal(t, "", result.failedMessage)
+	assert.Equal(t, true, result.stepFailed)
+}
+
 func TestCoverageExportedWhenExecutionFails(t *testing.T) {
 	// Arrange
 	result := testResult{}
