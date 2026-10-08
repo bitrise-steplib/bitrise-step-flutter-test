@@ -1,13 +1,8 @@
 package main
 
 import (
-	"bufio"
-	"bytes"
-	"encoding/json"
 	"encoding/xml"
-	"errors"
 	"fmt"
-	"io"
 	"net/url"
 	"os"
 	"path"
@@ -34,33 +29,12 @@ var (
 	goldenFailureImageSuffix = []string{"masterImage", "testImage", "isolatedDiff", "maskedDiff"}
 )
 
-// testRef identifies a test case of the JUnit XML the way tojunit writes it. run tells apart the
-// occurrences of the same class name and name, in the order the tests started.
-type testRef struct {
-	className string
-	name      string
-	run       int
-}
-
-type testAttachments struct {
-	test  testRef
-	files []string
-}
-
-// exportTestAttachments links the files a test reported in the `flutter test` JSON events to its
-// test case: files printed as [[ATTACHMENT|<path>]] and the images of a failed golden test. The
-// files are copied next to the exported JUnit XML and referenced by attachment_N properties.
+// exportTestAttachments links the files a test reported in its output to its test case in the
+// exported JUnit XML: files printed as [[ATTACHMENT|<path>]] and the images of a failed golden
+// test. tojunit writes a test's prints to its system-out, and its errors to its failure or error.
+// The files are copied next to the XML and referenced by attachment_N properties.
 // Problems are logged as warnings: the test result itself is already exported.
-func exportTestAttachments(logger log.Logger, fileManager fileutil.FileManager, events []byte, projectDir, reportDir string) {
-	attachments, err := parseTestAttachments(events, projectDir)
-	if err != nil {
-		logger.Warnf("Failed to read the test events, attachments are not exported: %s", err)
-		return
-	}
-	if len(attachments) == 0 {
-		return
-	}
-
+func exportTestAttachments(logger log.Logger, fileManager fileutil.FileManager, projectDir, reportDir string) {
 	junitPath := filepath.Join(reportDir, testResultFileName)
 	report, err := readJUnitReport(junitPath)
 	if err != nil {
@@ -73,24 +47,18 @@ func exportTestAttachments(logger log.Logger, fileManager fileutil.FileManager, 
 		return
 	}
 
-	testCases := indexTestCases(&report)
 	exported := 0
-	for _, a := range attachments {
-		testCase, ok := testCases[a.test]
-		if !ok {
-			logger.Warnf("Skipping attachments of %q: no such test case in the test report", a.test.name)
-			continue
-		}
-		for _, file := range a.files {
+	forEachTestCase(&report, func(testCase *testreport.TestCase) {
+		for _, file := range filesInOutput(testCase, projectDir) {
 			fileName, err := copyAttachment(fileManager, file, reportDir, usedNames)
 			if err != nil {
-				logger.Warnf("Skipping attachment %s of %q: %s", file, a.test.name, err)
+				logger.Warnf("Skipping attachment %s of %q: %s", file, testCase.Name, err)
 				continue
 			}
 			addAttachmentProperty(testCase, fileName)
 			exported++
 		}
-	}
+	})
 	if exported == 0 {
 		return
 	}
@@ -102,149 +70,72 @@ func exportTestAttachments(logger log.Logger, fileManager fileutil.FileManager, 
 	logger.Donef("Exported %d test attachments.", exported)
 }
 
-// parseTestAttachments reads the attachments of each test from the JSON events. Relative marker
-// paths are resolved from projectDir, the working directory of `flutter test`.
-func parseTestAttachments(events []byte, projectDir string) ([]testAttachments, error) {
-	suitePaths := map[int]string{}
-	tests := map[int]testRef{}
-	runs := map[testRef]int{}
-	hidden := map[int]bool{}
-	filesByTest := map[int][]string{}
-	var order []int
-
-	reader := bufio.NewReader(bytes.NewReader(events))
-	for {
-		line, err := reader.ReadBytes('\n')
-		var event struct {
-			Type  string `json:"type"`
-			Suite struct {
-				ID   int    `json:"id"`
-				Path string `json:"path"`
-			} `json:"suite"`
-			Test struct {
-				ID      int    `json:"id"`
-				Name    string `json:"name"`
-				SuiteID int    `json:"suiteID"`
-			} `json:"test"`
-			TestID  int    `json:"testID"`
-			Hidden  bool   `json:"hidden"`
-			Message string `json:"message"`
-			Error   string `json:"error"`
+func forEachTestCase(report *testreport.TestReport, fn func(*testreport.TestCase)) {
+	var walk func(suite *testreport.TestSuite)
+	walk = func(suite *testreport.TestSuite) {
+		for i := range suite.TestCases {
+			fn(&suite.TestCases[i])
 		}
-		// The legacy --machine output can contain lines that are not events.
-		if json.Unmarshal(line, &event) == nil {
-			switch event.Type {
-			case "suite":
-				suitePaths[event.Suite.ID] = event.Suite.Path
-			case "testStart":
-				test := testRef{className: className(suitePaths[event.Test.SuiteID]), name: event.Test.Name}
-				run := runs[test]
-				runs[test]++
-				test.run = run
-				tests[event.Test.ID] = test
-			case "testDone":
-				// Loading, setUpAll and tearDownAll run as hidden tests that tojunit leaves out.
-				hidden[event.TestID] = event.Hidden
-			case "print", "error":
-				files := filesInMessage(event.Message+event.Error, projectDir)
-				if len(files) == 0 {
-					break
-				}
-				if _, seen := filesByTest[event.TestID]; !seen {
-					order = append(order, event.TestID)
-				}
-				for _, file := range files {
-					if !slices.Contains(filesByTest[event.TestID], file) {
-						filesByTest[event.TestID] = append(filesByTest[event.TestID], file)
-					}
-				}
-			}
-		}
-		if errors.Is(err, io.EOF) {
-			break
-		}
-		if err != nil {
-			return nil, err
+		for i := range suite.TestSuites {
+			walk(&suite.TestSuites[i])
 		}
 	}
-
-	var attachments []testAttachments
-	for _, testID := range order {
-		test, ok := tests[testID]
-		if !ok || hidden[testID] {
-			continue
-		}
-		attachments = append(attachments, testAttachments{test: test, files: filesByTest[testID]})
+	for i := range report.TestSuites {
+		walk(&report.TestSuites[i])
 	}
-	return attachments, nil
 }
 
-// filesInMessage returns the files a print or error message reports: the paths of
-// [[ATTACHMENT|<path>]] markers, and the images a failed golden test wrote. A golden failure
-// names its failures folder, and the images in it are named after the golden file.
-func filesInMessage(message, projectDir string) []string {
-	var files []string
-	for _, match := range attachmentMarkerPattern.FindAllStringSubmatch(message, -1) {
-		file := strings.TrimSpace(match[1])
-		if !filepath.IsAbs(file) {
-			file = filepath.Join(projectDir, file)
-		}
-		files = append(files, file)
+// filesInOutput returns the files a test case reported: the paths of [[ATTACHMENT|<path>]]
+// markers, resolved from projectDir (the working directory of `flutter test`), and the images a
+// failed golden test wrote. A golden failure names its failures folder, and the images in it are
+// named after the golden file.
+func filesInOutput(testCase *testreport.TestCase, projectDir string) []string {
+	var output []string
+	if testCase.SystemOut != nil {
+		output = append(output, testCase.SystemOut.Value)
+	}
+	if testCase.Failure != nil {
+		output = append(output, testCase.Failure.Value)
+	}
+	if testCase.Error != nil {
+		output = append(output, testCase.Error.Value)
 	}
 
-	feedback := failureFeedbackPattern.FindStringSubmatch(message)
-	if feedback == nil {
-		return files
+	var files []string
+	add := func(file string) {
+		if !slices.Contains(files, file) {
+			files = append(files, file)
+		}
 	}
-	failuresDir := strings.TrimSpace(feedback[1])
-	if unescaped, err := url.PathUnescape(failuresDir); err == nil {
-		failuresDir = unescaped
-	}
-	for _, match := range goldenFailurePattern.FindAllStringSubmatch(message, -1) {
-		golden := path.Base(match[1])
-		stem := strings.TrimSuffix(golden, path.Ext(golden))
-		// A size mismatch writes only some of the images.
-		for _, suffix := range goldenFailureImageSuffix {
-			if image := filepath.Join(failuresDir, stem+"_"+suffix+".png"); exists(image) {
-				files = append(files, image)
+	for _, text := range output {
+		for _, match := range attachmentMarkerPattern.FindAllStringSubmatch(text, -1) {
+			file := strings.TrimSpace(match[1])
+			if !filepath.IsAbs(file) {
+				file = filepath.Join(projectDir, file)
+			}
+			add(file)
+		}
+
+		feedback := failureFeedbackPattern.FindStringSubmatch(text)
+		if feedback == nil {
+			continue
+		}
+		failuresDir := strings.TrimSpace(feedback[1])
+		if unescaped, err := url.PathUnescape(failuresDir); err == nil {
+			failuresDir = unescaped
+		}
+		for _, match := range goldenFailurePattern.FindAllStringSubmatch(text, -1) {
+			golden := path.Base(match[1])
+			stem := strings.TrimSuffix(golden, path.Ext(golden))
+			// A size mismatch writes only some of the images, or none on older Flutter versions.
+			for _, suffix := range goldenFailureImageSuffix {
+				if image := filepath.Join(failuresDir, stem+"_"+suffix+".png"); exists(image) {
+					add(image)
+				}
 			}
 		}
 	}
 	return files
-}
-
-// className is the class name tojunit writes for a test file: its path without "_test.dart" (or
-// ".dart"), with path separators replaced by "." and "-" by "_".
-func className(testFile string) string {
-	name := strings.TrimSuffix(testFile, "_test.dart")
-	if name == testFile {
-		name = strings.TrimSuffix(testFile, ".dart")
-	}
-	name = strings.NewReplacer("/", ".", `\`, ".").Replace(name)
-	return strings.ReplaceAll(name, "-", "_")
-}
-
-func indexTestCases(report *testreport.TestReport) map[testRef]*testreport.TestCase {
-	testCases := map[testRef]*testreport.TestCase{}
-	runs := map[testRef]int{}
-	var addSuite func(suite *testreport.TestSuite)
-	addSuite = func(suite *testreport.TestSuite) {
-		for i := range suite.TestCases {
-			testCase := &suite.TestCases[i]
-			test := testRef{className: testCase.ClassName, name: testCase.Name}
-			run := runs[test]
-			runs[test]++
-			test.run = run
-			testCases[test] = testCase
-		}
-		for i := range suite.TestSuites {
-			addSuite(&suite.TestSuites[i])
-		}
-	}
-	for i := range report.TestSuites {
-		addSuite(&report.TestSuites[i])
-	}
-	return testCases
 }
 
 // copyAttachment copies the file to the top of the report folder under a name no other file of the

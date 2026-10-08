@@ -7,170 +7,142 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/bitrise-io/go-steputils/v2/testreport"
 	"github.com/bitrise-io/go-utils/v2/fileutil"
 	"github.com/bitrise-io/go-utils/v2/log"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
-const loginClassName = ".Users.vagrant.git.test.login_flow"
-
-// The shape tojunit writes for test/login-flow_test.dart in /Users/vagrant/git.
-const loginJUnitXML = `<?xml version="1.0" encoding="UTF-8"?>
+// The shape tojunit writes: a test's prints go to its system-out, its errors to its error.
+func junitXML(errorOutput, systemOut string) string {
+	return `<?xml version="1.0" encoding="UTF-8"?>
 <testsuites>
-  <testsuite errors="0" failures="1" tests="3" skipped="0" name=".Users.vagrant.git.test.login_flow" timestamp="2026-10-08T09:00:00">
-    <testcase classname=".Users.vagrant.git.test.login_flow" name="Login shows an error" time="0.1"/>
-    <testcase classname=".Users.vagrant.git.test.login_flow" name="Login accepts a valid password" time="0.1"/>
-    <testcase classname=".Users.vagrant.git.test.login_flow" name="Login accepts a valid password" time="0.1"/>
+  <testsuite errors="1" failures="0" tests="2" skipped="0" name=".Users.vagrant.git.test.login" timestamp="2026-10-08T09:00:00">
+    <testcase classname=".Users.vagrant.git.test.login" name="Login shows an error" time="0.1">
+      <error message="1 error, see stacktrace for details">` + errorOutput + `</error>
+      <system-out>` + systemOut + `</system-out>
+    </testcase>
+    <testcase classname=".Users.vagrant.git.test.login" name="Login accepts a valid password" time="0.1"/>
   </testsuite>
 </testsuites>
 `
-
-const loginEventsHeader = `{"suite":{"id":0,"platform":"vm","path":"/Users/vagrant/git/test/login-flow_test.dart"},"type":"suite","time":0}
-{"test":{"id":1,"name":"Login shows an error","suiteID":0},"type":"testStart","time":1}
-{"test":{"id":2,"name":"Login accepts a valid password","suiteID":0},"type":"testStart","time":2}
-{"test":{"id":3,"name":"Login accepts a valid password","suiteID":0},"type":"testStart","time":3}
-`
-
-func Test_exportTestAttachments_marker(t *testing.T) {
-	projectDir, reportDir := setUpReport(t)
-	writeTestFile(t, filepath.Join(projectDir, "build", "shots", "error.png"), "screenshot")
-	events := loginEventsHeader + `{"testID":1,"messageType":"print","message":"[[ATTACHMENT|build/shots/error.png]]","type":"print","time":4}
-`
-
-	exportTestAttachments(log.NewLogger(), fileutil.NewFileManager(), []byte(events), projectDir, reportDir)
-
-	assertTestFile(t, filepath.Join(reportDir, "error.png"), "screenshot")
-	assert.Equal(t, []string{"error.png"}, attachmentsOf(t, reportDir, "Login shows an error", 0))
-	assert.Empty(t, attachmentsOf(t, reportDir, "Login accepts a valid password", 0))
 }
 
-func Test_exportTestAttachments_secondRunOfTheSameTest(t *testing.T) {
-	projectDir, reportDir := setUpReport(t)
-	writeTestFile(t, filepath.Join(projectDir, "valid.png"), "screenshot")
-	events := loginEventsHeader + `{"testID":3,"messageType":"print","message":"[[ATTACHMENT|valid.png]]","type":"print","time":4}
-`
+func Test_exportTestAttachments_marker(t *testing.T) {
+	projectDir, reportDir := setUpReport(t, junitXML("", "[[ATTACHMENT|build/shots/error.png]]"))
+	writeTestFile(t, filepath.Join(projectDir, "build", "shots", "error.png"), "screenshot")
 
-	exportTestAttachments(log.NewLogger(), fileutil.NewFileManager(), []byte(events), projectDir, reportDir)
+	exportTestAttachments(log.NewLogger(), fileutil.NewFileManager(), projectDir, reportDir)
 
-	assert.Empty(t, attachmentsOf(t, reportDir, "Login accepts a valid password", 0))
-	assert.Equal(t, []string{"valid.png"}, attachmentsOf(t, reportDir, "Login accepts a valid password", 1))
+	assertTestFile(t, filepath.Join(reportDir, "error.png"), "screenshot")
+	assert.Equal(t, []string{"error.png"}, attachmentsOf(t, reportDir, "Login shows an error"))
+	assert.Empty(t, attachmentsOf(t, reportDir, "Login accepts a valid password"))
 }
 
 func Test_exportTestAttachments_goldenFailure(t *testing.T) {
-	projectDir, reportDir := setUpReport(t)
+	projectDir := t.TempDir()
 	failuresDir := filepath.Join(projectDir, "test", "failures")
-	// A size mismatch writes only these two images.
+	// The wrapped shape flutter_test prints a golden failure in. A size mismatch writes only two images.
+	output := `══╡ EXCEPTION CAUGHT BY FLUTTER TEST FRAMEWORK ╞═══
+The following assertion was thrown while running async test code:
+Golden "goldens/login.png": Pixel test failed, image sizes do not match.
+Master Image: 800 X 600
+Test Image: 400 X 300
+Failure feedback can be found at
+` + failuresDir + `
+
+When the exception was thrown, this was the stack:`
+	reportDir := writeReport(t, junitXML("Test failed. See exception logs above.", output))
 	writeTestFile(t, filepath.Join(failuresDir, "login_masterImage.png"), "master")
 	writeTestFile(t, filepath.Join(failuresDir, "login_testImage.png"), "test")
-	// The wrapped shape flutter_test prints a golden failure in.
-	message := `══╡ EXCEPTION CAUGHT BY FLUTTER TEST FRAMEWORK ╞═══\nThe following assertion was thrown while running async test code:\nGolden \"goldens/login.png\": Pixel test failed, image sizes do not match.\nMaster Image: 800 X 600\nTest Image: 400 X 300\nFailure feedback can be found at\n` + failuresDir + `\n\nWhen the exception was thrown, this was the stack:`
-	events := loginEventsHeader + `{"testID":1,"messageType":"print","message":"` + message + `","type":"print","time":4}
-{"testID":1,"error":"Test failed. See exception logs above.","stackTrace":"","isFailure":false,"type":"error","time":5}
-`
 	var logs bytes.Buffer
 
-	exportTestAttachments(log.NewLogger(log.WithOutput(&logs)), fileutil.NewFileManager(), []byte(events), projectDir, reportDir)
+	exportTestAttachments(log.NewLogger(log.WithOutput(&logs)), fileutil.NewFileManager(), projectDir, reportDir)
 
-	assert.Equal(t, []string{"login_masterImage.png", "login_testImage.png"}, attachmentsOf(t, reportDir, "Login shows an error", 0))
+	assert.Equal(t, []string{"login_masterImage.png", "login_testImage.png"}, attachmentsOf(t, reportDir, "Login shows an error"))
 	assert.NotContains(t, logs.String(), "Skipping")
 }
 
-func Test_exportTestAttachments_sameFileNameInTwoTests(t *testing.T) {
-	projectDir, reportDir := setUpReport(t)
+func Test_exportTestAttachments_goldenFailureInError(t *testing.T) {
+	projectDir := t.TempDir()
+	failuresDir := filepath.Join(projectDir, "test", "failures")
+	output := `Golden "goldens/login.png": Pixel test failed, 1.00%, 4800px diff detected.
+Failure feedback can be found at ` + failuresDir
+	reportDir := writeReport(t, junitXML(output, ""))
+	for _, suffix := range []string{"masterImage", "testImage", "isolatedDiff", "maskedDiff"} {
+		writeTestFile(t, filepath.Join(failuresDir, "login_"+suffix+".png"), suffix)
+	}
+
+	exportTestAttachments(log.NewLogger(), fileutil.NewFileManager(), projectDir, reportDir)
+
+	assert.Equal(t, []string{"login_masterImage.png", "login_testImage.png", "login_isolatedDiff.png", "login_maskedDiff.png"}, attachmentsOf(t, reportDir, "Login shows an error"))
+}
+
+func Test_exportTestAttachments_sameFileNameTwice(t *testing.T) {
+	projectDir, reportDir := setUpReport(t, junitXML("", "[[ATTACHMENT|a/screen.png]]\n[[ATTACHMENT|b/screen.png]]"))
 	writeTestFile(t, filepath.Join(projectDir, "a", "screen.png"), "a")
 	writeTestFile(t, filepath.Join(projectDir, "b", "screen.png"), "b")
-	events := loginEventsHeader + `{"testID":1,"message":"[[ATTACHMENT|a/screen.png]]","type":"print"}
-{"testID":2,"message":"[[ATTACHMENT|b/screen.png]]","type":"print"}
-`
 
-	exportTestAttachments(log.NewLogger(), fileutil.NewFileManager(), []byte(events), projectDir, reportDir)
+	exportTestAttachments(log.NewLogger(), fileutil.NewFileManager(), projectDir, reportDir)
 
-	assert.Equal(t, []string{"screen.png"}, attachmentsOf(t, reportDir, "Login shows an error", 0))
-	assert.Equal(t, []string{"screen-2.png"}, attachmentsOf(t, reportDir, "Login accepts a valid password", 0))
+	assert.Equal(t, []string{"screen.png", "screen-2.png"}, attachmentsOf(t, reportDir, "Login shows an error"))
 	assertTestFile(t, filepath.Join(reportDir, "screen-2.png"), "b")
 }
 
 func Test_exportTestAttachments_noAttachmentsKeepsTheReport(t *testing.T) {
-	projectDir, reportDir := setUpReport(t)
-	events := loginEventsHeader + `{"testID":1,"message":"no marker here","type":"print"}
-`
+	xml := junitXML("", "no marker here")
+	projectDir, reportDir := setUpReport(t, xml)
 
-	exportTestAttachments(log.NewLogger(), fileutil.NewFileManager(), []byte(events), projectDir, reportDir)
+	exportTestAttachments(log.NewLogger(), fileutil.NewFileManager(), projectDir, reportDir)
 
-	assertTestFile(t, filepath.Join(reportDir, testResultFileName), loginJUnitXML)
+	assertTestFile(t, filepath.Join(reportDir, testResultFileName), xml)
 }
 
 func Test_exportTestAttachments_missingFile(t *testing.T) {
-	projectDir, reportDir := setUpReport(t)
-	events := loginEventsHeader + `{"testID":1,"message":"[[ATTACHMENT|build/missing.png]]","type":"print"}
-`
+	xml := junitXML("", "[[ATTACHMENT|build/missing.png]]")
+	projectDir, reportDir := setUpReport(t, xml)
 	var logs bytes.Buffer
 
-	exportTestAttachments(log.NewLogger(log.WithOutput(&logs)), fileutil.NewFileManager(), []byte(events), projectDir, reportDir)
+	exportTestAttachments(log.NewLogger(log.WithOutput(&logs)), fileutil.NewFileManager(), projectDir, reportDir)
 
 	assert.Contains(t, logs.String(), filepath.Join(projectDir, "build", "missing.png"))
-	assertTestFile(t, filepath.Join(reportDir, testResultFileName), loginJUnitXML)
+	assertTestFile(t, filepath.Join(reportDir, testResultFileName), xml)
 }
 
-func Test_exportTestAttachments_hiddenTest(t *testing.T) {
-	projectDir, reportDir := setUpReport(t)
-	writeTestFile(t, filepath.Join(projectDir, "setup.png"), "screenshot")
-	events := loginEventsHeader + `{"test":{"id":4,"name":"(setUpAll)","suiteID":0},"type":"testStart"}
-{"testID":4,"message":"[[ATTACHMENT|setup.png]]","type":"print"}
-{"testID":4,"result":"success","skipped":false,"hidden":true,"type":"testDone"}
-`
-	var logs bytes.Buffer
-
-	exportTestAttachments(log.NewLogger(log.WithOutput(&logs)), fileutil.NewFileManager(), []byte(events), projectDir, reportDir)
-
-	assert.Empty(t, logs.String())
-	assertTestFile(t, filepath.Join(reportDir, testResultFileName), loginJUnitXML)
-}
-
-func Test_exportTestAttachments_legacyOutputLines(t *testing.T) {
-	projectDir, reportDir := setUpReport(t)
-	writeTestFile(t, filepath.Join(projectDir, "error.png"), "screenshot")
-	events := "Running \"flutter pub get\" in app...\n" + loginEventsHeader + `{"testID":1,"message":"[[ATTACHMENT|error.png]]","type":"print"}`
-
-	exportTestAttachments(log.NewLogger(), fileutil.NewFileManager(), []byte(events), projectDir, reportDir)
-
-	assert.Equal(t, []string{"error.png"}, attachmentsOf(t, reportDir, "Login shows an error", 0))
-}
-
-func Test_className(t *testing.T) {
-	assert.Equal(t, loginClassName, className("/Users/vagrant/git/test/login-flow_test.dart"))
-	assert.Equal(t, ".bitrise.src.test.helpers.widget_utils", className("/bitrise/src/test/helpers/widget-utils.dart"))
-}
-
-func setUpReport(t *testing.T) (projectDir, reportDir string) {
+func setUpReport(t *testing.T, xml string) (projectDir, reportDir string) {
 	t.Helper()
-	projectDir = t.TempDir()
-	reportDir = t.TempDir()
-	writeTestFile(t, filepath.Join(reportDir, testResultFileName), loginJUnitXML)
-	return projectDir, reportDir
+	return t.TempDir(), writeReport(t, xml)
 }
 
-func attachmentsOf(t *testing.T, reportDir, testName string, run int) []string {
+func writeReport(t *testing.T, xml string) string {
+	t.Helper()
+	reportDir := t.TempDir()
+	writeTestFile(t, filepath.Join(reportDir, testResultFileName), xml)
+	return reportDir
+}
+
+func attachmentsOf(t *testing.T, reportDir, testName string) []string {
 	t.Helper()
 	report, err := readJUnitReport(filepath.Join(reportDir, testResultFileName))
 	require.NoError(t, err)
-	testCase := indexTestCases(&report)[testRef{className: loginClassName, name: testName, run: run}]
-	require.NotNil(t, testCase)
-	return attachmentValues(testCase)
-}
 
-func attachmentValues(testCase *testreport.TestCase) []string {
 	var values []string
-	if testCase.Properties == nil {
-		return nil
-	}
-	for _, property := range testCase.Properties.Property {
-		if strings.HasPrefix(property.Name, attachmentPropertyPrefix) {
-			values = append(values, property.Value)
+	found := false
+	for _, testCase := range report.TestSuites[0].TestCases {
+		if testCase.Name != testName {
+			continue
+		}
+		found = true
+		if testCase.Properties == nil {
+			continue
+		}
+		for _, property := range testCase.Properties.Property {
+			if strings.HasPrefix(property.Name, attachmentPropertyPrefix) {
+				values = append(values, property.Value)
+			}
 		}
 	}
+	require.True(t, found, "no test case %q", testName)
 	return values
 }
 

@@ -109,11 +109,11 @@ func TestResultsAreExportedFromNonRootProject(t *testing.T) {
 	assert.Equal(t, result.exportPath, testProjectLocation+"/"+testResultFileName)
 }
 
-func TestTestEventsAreUsedForAttachments(t *testing.T) {
+func TestAttachmentsAreExportedWithTheTestResults(t *testing.T) {
 	result := testResult{}
 	test := testWrapperExecutor{realTestExecutor: realTestExecutor{testExporter: mockTestExporter{testResult: &result}}, realExport: true}
 
-	test.exportTestResults(config{ProjectLocation: testProjectLocation}, *bytes.NewBufferString(`{"type":"done"}`))
+	test.exportTestResults(config{ProjectLocation: testProjectLocation}, bytes.Buffer{})
 
-	assert.Equal(t, `{"type":"done"}`, result.attachmentEvents)
+	assert.True(t, result.attachmentsExported)
 }

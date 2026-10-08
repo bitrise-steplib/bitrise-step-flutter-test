@@ -23,7 +23,7 @@ type testExporter interface {
 	copyBufferToDeployPath(jsonBuffer bytes.Buffer) string
 	exportDeployPath(testResultDeployPath string)
 	exportTestResultsToResultPath(cfg config, testResultPath string)
-	exportAttachments(cfg config, events []byte)
+	exportAttachments(cfg config)
 	exportCoverage(projectLocation string)
 }
 
@@ -52,9 +52,9 @@ func (r realTestExporter) exportTestResultsToResultPath(cfg config, testResultPa
 	}
 }
 
-func (r realTestExporter) exportAttachments(cfg config, events []byte) {
+func (r realTestExporter) exportAttachments(cfg config) {
 	reportDir := filepath.Join(cfg.TestResultsDir, testName)
-	exportTestAttachments(r.logger, r.fileManager, events, cfg.ProjectLocation, reportDir)
+	exportTestAttachments(r.logger, r.fileManager, cfg.ProjectLocation, reportDir)
 }
 
 func (r realTestExporter) exportCoverage(projectLocation string) {

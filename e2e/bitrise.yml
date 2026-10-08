@@ -67,15 +67,6 @@ workflows:
     after_run:
     - _golden_failure
 
-  test_golden_failure_attachments_flutter_3_10_plus:
-    envs:
-    - SAMPLE_APP_BRANCH: dart-3
-    title: Attach the images of a failed golden test on Flutter 3.10+
-    tools:
-      flutter: 3.32.1
-    after_run:
-    - _golden_failure
-
   _prepare:
     title: Clone the test project
     steps:
@@ -156,10 +147,8 @@ workflows:
 
             # Every workflow of the build exports into the same test result dir, so the name keeps this run's files apart.
             golden_name="golden_${RANDOM}${RANDOM}"
-            mkdir -p "$PROJECT_LOCATION/test/goldens"
-            # A 1x1 PNG: the test renders a full screen, so the comparison fails with a size mismatch.
-            echo "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII=" | base64 --decode > "$PROJECT_LOCATION/test/goldens/$golden_name.png"
-            cat > "$PROJECT_LOCATION/test/golden_failure_test.dart" <<EOF
+            test_file="$PROJECT_LOCATION/test/golden_failure_test.dart"
+            cat > "$test_file" <<EOF
             import 'package:flutter/widgets.dart';
             import 'package:flutter_test/flutter_test.dart';
 
@@ -170,6 +159,12 @@ workflows:
               });
             }
             EOF
+
+            # Record the golden in red, then render green, so the images differ but have the same size.
+            # Older Flutter versions write no failure images for a size mismatch.
+            (cd "$PROJECT_LOCATION" && flutter test --update-goldens test/golden_failure_test.dart)
+            sed -i.bak 's/0xFFFF0000/0xFF00FF00/' "$test_file"
+            rm "$test_file.bak"
             envman add --key GOLDEN_NAME --value "$golden_name"
     - path::./:
         title: Execute step with a failing golden test
@@ -184,7 +179,7 @@ workflows:
             set -ex
 
             report_dir="$(dirname "$(ls "$BITRISE_TEST_RESULT_DIR"/../*/Flutter\ test\ results/"${GOLDEN_NAME}_testImage.png")")"
-            for image in masterImage testImage; do
+            for image in masterImage testImage isolatedDiff maskedDiff; do
               grep -q "value=\"${GOLDEN_NAME}_${image}.png\"" "$report_dir/flutter_junit_test_results.xml"
             done
 
