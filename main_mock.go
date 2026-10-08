@@ -4,7 +4,8 @@ import (
 	"bytes"
 	"errors"
 
-	"github.com/bitrise-io/go-utils/command"
+	"github.com/bitrise-io/go-utils/v2/command"
+	"github.com/bitrise-io/go-utils/v2/log"
 )
 
 const testProjectLocation = "foo/bar"
@@ -48,31 +49,32 @@ func (m mockParser) expandTestsPathPattern(string, string) []string {
 	return []string{}
 }
 
-type mockCommandWrapper struct {
+type mockCommand struct {
+	command.Command
 	failWait bool
 }
 
-func (m mockCommandWrapper) start() error {
+func (m mockCommand) Start() error {
 	return nil
 }
 
-func (m mockCommandWrapper) wait() error {
+func (m mockCommand) Wait() error {
 	if m.failWait {
 		return errors.New("command failed")
 	}
 	return nil
 }
 
-func (m mockCommandWrapper) toModel() *command.Model {
-	return command.New("")
+func (m mockCommand) PrintableCommandArgs() string {
+	return ""
 }
 
-func failingCmd() commandWrapper {
-	return mockCommandWrapper{failWait: true}
+func failingCmd() command.Command {
+	return mockCommand{failWait: true}
 }
 
-func successCmd() commandWrapper {
-	return mockCommandWrapper{failWait: false}
+func successCmd() command.Command {
+	return mockCommand{failWait: false}
 }
 
 type testWrapperExecutor struct {
@@ -103,31 +105,32 @@ func (t testCommandBuilder) supportsFileReporter() bool {
 	return t.fileReporterSupported
 }
 
-func (t testCommandBuilder) buildTestCmd(generateCoverage bool, fileReporterPath string, additionalParams []string) commandWrapper {
+func (t testCommandBuilder) buildTestCmd(bool, string, []string, *command.Opts) command.Command {
 	if t.testFails {
 		return failingCmd()
 	}
 	return successCmd()
 }
 
-func (t testCommandBuilder) buildJunitCmd(config, string) commandWrapper {
+func (t testCommandBuilder) buildJunitCmd(config, string, *command.Opts) command.Command {
 	return successCmd()
 }
 
-func (t testCommandBuilder) buildLegacyTestCmd(generateCoverage bool, additionalParams []string) commandWrapper {
+func (t testCommandBuilder) buildLegacyTestCmd(bool, []string, *command.Opts) command.Command {
 	if t.testFails {
 		return failingCmd()
 	}
 	return successCmd()
 }
 
-func (t testCommandBuilder) buildLegacyJunitCmd(config) commandWrapper {
+func (t testCommandBuilder) buildLegacyJunitCmd(config, *command.Opts) command.Command {
 	return successCmd()
 }
 
 func setupFailingUnitTestsExecutor(interrupt interrupt, testResult *testResult) {
 	test = testWrapperExecutor{realTestExecutor: realTestExecutor{
 		interrupt:      interrupt,
+		logger:         log.NewLogger(),
 		commandBuilder: testCommandBuilder{testFails: true},
 		testExporter:   mockTestExporter{testResult: testResult},
 	}, testResult: testResult}
@@ -136,6 +139,7 @@ func setupFailingUnitTestsExecutor(interrupt interrupt, testResult *testResult) 
 func setupFailingFileReporterExecutor(interrupt interrupt, testResult *testResult) {
 	test = testWrapperExecutor{realTestExecutor: realTestExecutor{
 		interrupt:      interrupt,
+		logger:         log.NewLogger(),
 		commandBuilder: testCommandBuilder{testFails: true, fileReporterSupported: true},
 		testExporter:   mockTestExporter{testResult: testResult},
 	}, testResult: testResult}

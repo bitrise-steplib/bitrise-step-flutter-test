@@ -5,8 +5,9 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/bitrise-io/go-steputils/stepconf"
-	"github.com/bitrise-io/go-utils/log"
+	"github.com/bitrise-io/go-steputils/v2/stepconf"
+	"github.com/bitrise-io/go-utils/v2/env"
+	"github.com/bitrise-io/go-utils/v2/log"
 	"github.com/bmatcuk/doublestar/v3"
 	"github.com/kballard/go-shellquote"
 )
@@ -19,11 +20,13 @@ type configParser interface {
 
 type realConfigParser struct {
 	interrupt interrupt
+	logger    log.Logger
+	envRepo   env.Repository
 }
 
 func (r realConfigParser) parseConfig() config {
 	var cfg config
-	if err := stepconf.Parse(&cfg); err != nil {
+	if err := stepconf.NewInputParser(r.envRepo).Parse(&cfg); err != nil {
 		r.interrupt.failWithMessage("Process config: failed to parse step inputs: %s", err)
 	}
 	return cfg
@@ -36,7 +39,7 @@ func (r realConfigParser) expandTestsPathPattern(projectLocation string, testsPa
 	var result []string
 	glob, err := doublestar.Glob(filepath.Join(projectLocation, testsPathPattern))
 	if err != nil {
-		log.Warnf("Couldn't expand pattern: %s: %s", testsPathPattern, err)
+		r.logger.Warnf("Couldn't expand pattern: %s: %s", testsPathPattern, err)
 		return nil
 	}
 	for _, path := range glob {

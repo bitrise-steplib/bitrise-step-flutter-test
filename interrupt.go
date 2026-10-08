@@ -1,8 +1,9 @@
 package main
 
 import (
-	"github.com/bitrise-io/go-utils/log"
 	"os"
+
+	"github.com/bitrise-io/go-utils/v2/log"
 )
 
 type interrupt interface {
@@ -10,10 +11,12 @@ type interrupt interface {
 	fail()
 }
 
-type realInterrupt struct{}
+type realInterrupt struct {
+	logger log.Logger
+}
 
 func (r realInterrupt) failWithMessage(msg string, args ...interface{}) {
-	log.Errorf(msg, args...)
+	r.logger.Errorf(msg, args...)
 	r.fail()
 }
 

@@ -3,15 +3,15 @@ default_step_lib_source: https://github.com/bitrise-io/bitrise-steplib.git
 
 # Flutter is installed through Bitrise's built-in mise integration (the `tools` field),
 # which puts `flutter` and `dart` on $PATH for every step in the build.
-# Pinned to 3.7.1 because Flutter 3.10 brings Dart 3.0, which the sample app is not compatible with yet.
-# (This also exercises the Step's pre-3.10 --machine fallback path end to end.)
+# Pinned to 3.7.1 (Dart 2.19) to exercise the Step's pre-3.10 --machine fallback path end to end.
+# The sample's `main` requires Dart 3, so these workflows use its Dart 2 `e2e-test` branch.
 tools:
   flutter: 3.7.1
 
 app:
   envs:
   - SAMPLE_APP_URL: https://github.com/bitrise-io/Bitrise-Flutter-Sample.git
-  - SAMPLE_APP_BRANCH: main
+  - SAMPLE_APP_BRANCH: e2e-test
   - ORIGIN_SOURCE_DIR: $BITRISE_SOURCE_DIR
   - PROJECT_LOCATION: $BITRISE_SOURCE_DIR/_tmp
   - GENERATE_CODE_COVERAGE_FILES: "no"
@@ -38,9 +38,9 @@ workflows:
     after_run:
     - _common
 
-  # Exercises the modern --file-reporter path (Flutter >= 3.10). The shared sample app
-  # is pinned to Dart < 3.0, so this workflow uses the sample's `dart-3` branch and
-  # overrides the Flutter version to 3.10+ via workflow-level `tools`, reusing _common.
+  # Exercises the modern --file-reporter path (Flutter >= 3.10). The app-level sample
+  # branch is Dart 2, so this workflow uses the sample's `dart-3` branch and overrides
+  # the Flutter version to 3.10+ via workflow-level `tools`, reusing _common.
   test_file_reporter_flutter_3_10_plus:
     envs:
     - SAMPLE_APP_BRANCH: dart-3
