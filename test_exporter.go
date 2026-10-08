@@ -7,7 +7,6 @@ import (
 	"path/filepath"
 
 	"github.com/bitrise-io/go-steputils/v2/export"
-	"github.com/bitrise-io/go-steputils/v2/testattachment"
 	"github.com/bitrise-io/go-steputils/v2/testresultexport" //nolint:staticcheck // deprecated for new steps only, the package exists for this one
 	"github.com/bitrise-io/go-utils/v2/fileutil"
 	"github.com/bitrise-io/go-utils/v2/log"
@@ -24,17 +23,15 @@ type testExporter interface {
 	copyBufferToDeployPath(jsonBuffer bytes.Buffer) string
 	exportDeployPath(testResultDeployPath string)
 	exportTestResultsToResultPath(cfg config, testResultPath string)
-	exportAttachments(cfg config, testResultPath string)
+	exportAttachments(cfg config, events []byte)
 	exportCoverage(projectLocation string)
 }
 
 type realTestExporter struct {
-	interrupt           interrupt
-	logger              log.Logger
-	outputExporter      export.Exporter
-	fileManager         fileutil.FileManager
-	attachmentCollector testattachment.Collector
-	testDeployDir       string
+	interrupt      interrupt
+	logger         log.Logger
+	outputExporter export.Exporter
+	fileManager    fileutil.FileManager
 }
 
 func (r realTestExporter) copyBufferToDeployPath(jsonBuffer bytes.Buffer) string {
@@ -55,9 +52,9 @@ func (r realTestExporter) exportTestResultsToResultPath(cfg config, testResultPa
 	}
 }
 
-func (r realTestExporter) exportAttachments(cfg config, testResultPath string) {
+func (r realTestExporter) exportAttachments(cfg config, events []byte) {
 	reportDir := filepath.Join(cfg.TestResultsDir, testName)
-	exportConventionAttachments(r.logger, r.attachmentCollector, cfg.ProjectLocation, r.testDeployDir, testResultPath, reportDir)
+	exportTestAttachments(r.logger, r.fileManager, events, cfg.ProjectLocation, reportDir)
 }
 
 func (r realTestExporter) exportCoverage(projectLocation string) {

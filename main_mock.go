@@ -17,7 +17,7 @@ type testResult struct {
 	testResultsExported bool
 	testExecuted        bool
 	exportPath          string
-	attachmentsJUnit    string
+	attachmentEvents    string
 }
 
 type mockInterrupt struct {
@@ -160,8 +160,8 @@ func (m mockTestExporter) copyBufferToDeployPath(bytes.Buffer) string {
 
 func (m mockTestExporter) exportDeployPath(string) {}
 
-func (m mockTestExporter) exportAttachments(_ config, testResultPath string) {
-	m.testResult.attachmentsJUnit = testResultPath
+func (m mockTestExporter) exportAttachments(_ config, events []byte) {
+	m.testResult.attachmentEvents = string(events)
 }
 
 func (m mockTestExporter) exportTestResultsToResultPath(_ config, testResultPath string) {

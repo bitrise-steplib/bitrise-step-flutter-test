@@ -6,7 +6,6 @@ github.com/bitrise-io/go-android/v2/testresult/junitxml
 github.com/bitrise-io/go-steputils/v2/export
 github.com/bitrise-io/go-steputils/v2/stepconf
 github.com/bitrise-io/go-steputils/v2/testasset
-github.com/bitrise-io/go-steputils/v2/testattachment
 github.com/bitrise-io/go-steputils/v2/testreport
 github.com/bitrise-io/go-steputils/v2/testresultexport
 # github.com/bitrise-io/go-utils/v2 v2.0.0-alpha.39

@@ -62,11 +62,22 @@ workflows:
             set -ex
             flutter test --help | grep -q -- '--file-reporter'
 
-  _common:
+  test_golden_failure_attachments:
+    title: Attach the images of a failed golden test
     after_run:
-    - _assert_output
-    - _validate_coverage
-    title: Prepare test
+    - _golden_failure
+
+  test_golden_failure_attachments_flutter_3_10_plus:
+    envs:
+    - SAMPLE_APP_BRANCH: dart-3
+    title: Attach the images of a failed golden test on Flutter 3.10+
+    tools:
+      flutter: 3.32.1
+    after_run:
+    - _golden_failure
+
+  _prepare:
+    title: Clone the test project
     steps:
     - script:
         title: Delete _tmp
@@ -93,28 +104,89 @@ workflows:
         - clone_into_dir: $BITRISE_SOURCE_DIR
         - repository_url: $SAMPLE_APP_URL
         - branch: $SAMPLE_APP_BRANCH
+
+  _common:
+    before_run:
+    - _prepare
+    after_run:
+    - _assert_output
+    - _validate_coverage
+    title: Prepare test
+    steps:
     - script:
-        title: Save an attachment named after a sample test
+        title: Add a test that attaches a file
         inputs:
         - content: |-
             #!/bin/bash
             set -ex
 
-            # tojunit's class name: the test file's real path without "_test.dart", "/" -> ".", "-" -> "_".
-            class_name="$(cd "$PROJECT_LOCATION" && pwd -P)/test/widget"
-            class_name="${class_name//\//.}"
-            class_name="${class_name//-/_}"
-            # Every workflow of the build exports into the same test result dir, so the label keeps this run's file apart.
-            attachment_name="${class_name}__Counter increments smoke test__e2e${RANDOM}${RANDOM}.png"
+            # Every workflow of the build exports into the same test result dir, so the name keeps this run's file apart.
+            attachment_name="e2e-${RANDOM}${RANDOM}.txt"
+            cat > "$PROJECT_LOCATION/test/attachment_test.dart" <<EOF
+            import 'dart:io';
 
-            mkdir -p "$PROJECT_LOCATION/build/test-attachments"
-            echo "screenshot" > "$PROJECT_LOCATION/build/test-attachments/$attachment_name"
+            import 'package:flutter_test/flutter_test.dart';
+
+            void main() {
+              test('saves an attachment', () {
+                File('build/$attachment_name')
+                  ..createSync(recursive: true)
+                  ..writeAsStringSync('attachment');
+                print('[[ATTACHMENT|build/$attachment_name]]');
+              });
+            }
+            EOF
             envman add --key ATTACHMENT_NAME --value "$attachment_name"
     - path::./:
         title: Execute step
         inputs:
         - project_location: $PROJECT_LOCATION
         - generate_code_coverage_files: $GENERATE_CODE_COVERAGE_FILES
+
+  _golden_failure:
+    before_run:
+    - _prepare
+    steps:
+    - script:
+        title: Add a golden test that fails
+        inputs:
+        - content: |-
+            #!/bin/bash
+            set -ex
+
+            # Every workflow of the build exports into the same test result dir, so the name keeps this run's files apart.
+            golden_name="golden_${RANDOM}${RANDOM}"
+            mkdir -p "$PROJECT_LOCATION/test/goldens"
+            # A 1x1 PNG: the test renders a full screen, so the comparison fails with a size mismatch.
+            echo "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII=" | base64 --decode > "$PROJECT_LOCATION/test/goldens/$golden_name.png"
+            cat > "$PROJECT_LOCATION/test/golden_failure_test.dart" <<EOF
+            import 'package:flutter/widgets.dart';
+            import 'package:flutter_test/flutter_test.dart';
+
+            void main() {
+              testWidgets('fails against its golden', (tester) async {
+                await tester.pumpWidget(const ColoredBox(color: Color(0xFFFF0000)));
+                await expectLater(find.byType(ColoredBox), matchesGoldenFile('goldens/$golden_name.png'));
+              });
+            }
+            EOF
+            envman add --key GOLDEN_NAME --value "$golden_name"
+    - path::./:
+        title: Execute step with a failing golden test
+        is_skippable: true
+        inputs:
+        - project_location: $PROJECT_LOCATION
+    - script:
+        title: Check that the golden failure images are linked
+        inputs:
+        - content: |-
+            #!/bin/bash
+            set -ex
+
+            report_dir="$(dirname "$(ls "$BITRISE_TEST_RESULT_DIR"/../*/Flutter\ test\ results/"${GOLDEN_NAME}_testImage.png")")"
+            for image in masterImage testImage; do
+              grep -q "value=\"${GOLDEN_NAME}_${image}.png\"" "$report_dir/flutter_junit_test_results.xml"
+            done
 
   _assert_output:
     steps:
@@ -141,13 +213,9 @@ workflows:
               exit 1
             fi
 
-            echo "Checking for the attachment next to the JUNIT output"
-            if ls "$BITRISE_TEST_RESULT_DIR"/../*/Flutter\ test\ results/"$ATTACHMENT_NAME" 1> /dev/null 2>&1; then
-              echo "Attachment exists."
-            else
-              echo "Attachment does not exist."
-              exit 1
-            fi
+            echo "Checking for the attachment and its link in the JUNIT output"
+            report_dir="$(dirname "$(ls "$BITRISE_TEST_RESULT_DIR"/../*/Flutter\ test\ results/"$ATTACHMENT_NAME")")"
+            grep -q "value=\"$ATTACHMENT_NAME\"" "$report_dir/flutter_junit_test_results.xml"
 
   _validate_coverage:
     steps:

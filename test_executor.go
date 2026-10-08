@@ -181,7 +181,7 @@ func (r realTestExecutor) exportTestResults(cfg config, jsonBuffer bytes.Buffer)
 	testResultPath := cfg.ProjectLocation + "/" + testResultFileName
 
 	r.testExporter.exportTestResultsToResultPath(cfg, testResultPath)
-	r.testExporter.exportAttachments(cfg, testResultPath)
+	r.testExporter.exportAttachments(cfg, jsonBuffer.Bytes())
 
 	if cfg.GenerateCodeCoverageFiles {
 		r.testExporter.exportCoverage(cfg.ProjectLocation)
