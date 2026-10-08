@@ -2,14 +2,14 @@ package main
 
 import (
 	"bytes"
-	"io/ioutil"
 	"os"
 	"path"
 	"path/filepath"
 
-	"github.com/bitrise-io/go-steputils/testresultexport"
-	"github.com/bitrise-io/go-steputils/tools"
-	"github.com/bitrise-io/go-utils/log"
+	"github.com/bitrise-io/go-steputils/v2/export"
+	"github.com/bitrise-io/go-steputils/v2/testresultexport" //nolint:staticcheck // deprecated for new steps only, the package exists for this one
+	"github.com/bitrise-io/go-utils/v2/fileutil"
+	"github.com/bitrise-io/go-utils/v2/log"
 )
 
 const (
@@ -27,7 +27,10 @@ type testExporter interface {
 }
 
 type realTestExporter struct {
-	interrupt interrupt
+	interrupt      interrupt
+	logger         log.Logger
+	outputExporter export.Exporter
+	fileManager    fileutil.FileManager
 }
 
 func (r realTestExporter) copyBufferToDeployPath(jsonBuffer bytes.Buffer) string {
@@ -35,32 +38,32 @@ func (r realTestExporter) copyBufferToDeployPath(jsonBuffer bytes.Buffer) string
 }
 
 func (r realTestExporter) exportDeployPath(testResultDeployPath string) {
-	if err := tools.ExportEnvironmentWithEnvman("BITRISE_FLUTTER_TESTRESULT_PATH", testResultDeployPath); err != nil {
+	if err := r.outputExporter.ExportOutput("BITRISE_FLUTTER_TESTRESULT_PATH", testResultDeployPath); err != nil {
 		r.interrupt.failWithMessage("Failed to export: BITRISE_FLUTTER_TESTRESULT_PATH, error: %s", err)
 	}
-	log.Donef("Test results exported in JUnit format as $BITRISE_FLUTTER_TESTRESULT_PATH")
+	r.logger.Donef("Test results exported in JUnit format as $BITRISE_FLUTTER_TESTRESULT_PATH")
 }
 
 func (r realTestExporter) exportTestResultsToResultPath(cfg config, testResultPath string) {
-	exporter := testresultexport.NewExporter(cfg.TestResultsDir)
+	exporter := testresultexport.NewExporter(cfg.TestResultsDir, r.fileManager)
 	if err := exporter.ExportTest(testName, testResultPath); err != nil {
 		r.interrupt.failWithMessage("Export outputs: failed to export test result: %s", err)
 	}
 }
 
 func (r realTestExporter) exportCoverage(projectLocation string) {
-	covData, err := ioutil.ReadFile(path.Join(projectLocation, coverageRelativePath))
+	covData, err := os.ReadFile(path.Join(projectLocation, coverageRelativePath))
 	if err != nil {
 		r.interrupt.failWithMessage("Export outputs: failed to open %s", coverageRelativePath)
 	}
 
 	covDeployPath := copyBufferToDeployDir(covData, coverageFileName, r.interrupt)
 
-	if err := tools.ExportEnvironmentWithEnvman("BITRISE_FLUTTER_COVERAGE_PATH", covDeployPath); err != nil {
+	if err := r.outputExporter.ExportOutput("BITRISE_FLUTTER_COVERAGE_PATH", covDeployPath); err != nil {
 		r.interrupt.failWithMessage("Export outputs: failed to export $BITRISE_FLUTTER_COVERAGE_PATH: %s", err)
 	}
 
-	log.Donef("Test coverage file exported as $BITRISE_FLUTTER_COVERAGE_PATH")
+	r.logger.Donef("Test coverage file exported as $BITRISE_FLUTTER_COVERAGE_PATH")
 }
 
 func copyBufferToDeployDir(buffer []byte, logFileName string, interrupt interrupt) string {
@@ -70,7 +73,7 @@ func copyBufferToDeployDir(buffer []byte, logFileName string, interrupt interrup
 	}
 	deployPth := filepath.Join(deployDir, logFileName)
 
-	if err := ioutil.WriteFile(deployPth, buffer, 0664); err != nil {
+	if err := os.WriteFile(deployPth, buffer, 0664); err != nil {
 		interrupt.failWithMessage("Export outputs: failed to write buffer to %s: %s", deployPth, err)
 	}
 	return deployPth

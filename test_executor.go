@@ -7,7 +7,8 @@ import (
 	"os"
 	"strings"
 
-	"github.com/bitrise-io/go-utils/log"
+	"github.com/bitrise-io/go-utils/v2/command"
+	"github.com/bitrise-io/go-utils/v2/log"
 )
 
 const testResultFileName = "flutter_junit_test_results.xml"
@@ -19,6 +20,7 @@ type testExecutor interface {
 
 type realTestExecutor struct {
 	interrupt      interrupt
+	logger         log.Logger
 	commandBuilder commandBuilder
 	testExporter   testExporter
 }
@@ -33,7 +35,7 @@ func (r realTestExecutor) executeTest(cfg config, additionalParams []string) (by
 		return r.executeTestWithFileReporter(cfg, additionalParams)
 	}
 
-	log.Warnf("`flutter test` does not support --file-reporter (Flutter < 3.10); the log will show the raw machine JSON stream. Upgrade to Flutter 3.10 or newer for human-readable test output.")
+	r.logger.Warnf("`flutter test` does not support --file-reporter (Flutter < 3.10); the log will show the raw machine JSON stream. Upgrade to Flutter 3.10 or newer for human-readable test output.")
 	return r.executeTestLegacy(cfg, additionalParams)
 }
 
@@ -48,25 +50,25 @@ func (r realTestExecutor) executeTestWithFileReporter(cfg config, additionalPara
 	jsonReportFile.Close()
 	defer os.Remove(jsonReportPath)
 
-	testCmd := r.commandBuilder.buildTestCmd(cfg.GenerateCodeCoverageFiles, jsonReportPath, additionalParams)
-	testCmdModel := testCmd.toModel().
-		SetStdout(os.Stdout).
-		SetStderr(os.Stderr).
-		SetDir(cfg.ProjectLocation)
+	testCmd := r.commandBuilder.buildTestCmd(cfg.GenerateCodeCoverageFiles, jsonReportPath, additionalParams, &command.Opts{
+		Stdout: os.Stdout,
+		Stderr: os.Stderr,
+		Dir:    cfg.ProjectLocation,
+	})
 
 	fmt.Println()
-	log.Donef("$ %s", testCmdModel.PrintableCommandArgs())
+	r.logger.Donef("$ %s", testCmd.PrintableCommandArgs())
 	fmt.Println()
 
 	testExecutionFailed := false
-	if err := testCmd.start(); err != nil {
+	if err := testCmd.Start(); err != nil {
 		r.interrupt.failWithMessage("Run: test command failed: %s", err)
 	}
 
 	// Don't abort on test failures: we still want to convert and export whatever
 	// results were produced.
-	if err := testCmd.wait(); err != nil {
-		log.Errorf("Run: completing test command failed: %s", err)
+	if err := testCmd.Wait(); err != nil {
+		r.logger.Errorf("Run: completing test command failed: %s", err)
 		testExecutionFailed = true
 	}
 
@@ -75,26 +77,26 @@ func (r realTestExecutor) executeTestWithFileReporter(cfg config, additionalPara
 	// command in unit tests) is not fatal: continue with an empty buffer.
 	var jsonBuffer bytes.Buffer
 	if data, err := os.ReadFile(jsonReportPath); err != nil {
-		log.Warnf("Run: could not read test result JSON (%s): %s", jsonReportPath, err)
+		r.logger.Warnf("Run: could not read test result JSON (%s): %s", jsonReportPath, err)
 	} else {
 		jsonBuffer.Write(data)
 	}
 
-	junitCmd := r.commandBuilder.buildJunitCmd(cfg, jsonReportPath)
-	junitCmdModel := junitCmd.toModel().
-		SetStdout(os.Stdout).
-		SetStderr(os.Stderr).
-		SetDir(cfg.ProjectLocation)
+	junitCmd := r.commandBuilder.buildJunitCmd(cfg, jsonReportPath, &command.Opts{
+		Stdout: os.Stdout,
+		Stderr: os.Stderr,
+		Dir:    cfg.ProjectLocation,
+	})
 
 	fmt.Println()
-	log.Donef("$ %s", junitCmdModel.PrintableCommandArgs())
+	r.logger.Donef("$ %s", junitCmd.PrintableCommandArgs())
 	fmt.Println()
 
-	if err := junitCmd.start(); err != nil {
+	if err := junitCmd.Start(); err != nil {
 		r.interrupt.failWithMessage("Run: converting test results to junit format failed: %s", err)
 	}
 
-	if err := junitCmd.wait(); err != nil {
+	if err := junitCmd.Wait(); err != nil {
 		r.interrupt.failWithMessage("Run: completing conversion command failed: %s", err)
 	}
 
@@ -109,31 +111,29 @@ func (r realTestExecutor) executeTestLegacy(cfg config, additionalParams []strin
 	pr, pw := io.Pipe()
 	testCmdWriter := io.MultiWriter(pw, &jsonBuffer)
 
-	testCmd := r.commandBuilder.buildLegacyTestCmd(cfg.GenerateCodeCoverageFiles, additionalParams)
-	junitCmd := r.commandBuilder.buildLegacyJunitCmd(cfg)
+	testCmd := r.commandBuilder.buildLegacyTestCmd(cfg.GenerateCodeCoverageFiles, additionalParams, &command.Opts{
+		Stdout: testCmdWriter,
+		Stderr: os.Stderr,
+		Dir:    cfg.ProjectLocation,
+	})
+	junitCmd := r.commandBuilder.buildLegacyJunitCmd(cfg, &command.Opts{
+		Stdin:  pr,
+		Stdout: os.Stdout,
+		Stderr: os.Stderr,
+		Dir:    cfg.ProjectLocation,
+	})
 
 	testExecutionFailed := false
 
-	testCmdModel := testCmd.toModel().
-		SetStdout(testCmdWriter).
-		SetStderr(os.Stderr).
-		SetDir(cfg.ProjectLocation)
-
-	junitCmdModel := junitCmd.toModel().
-		SetStdin(pr).
-		SetStdout(os.Stdout).
-		SetStderr(os.Stderr).
-		SetDir(cfg.ProjectLocation)
-
 	fmt.Println()
-	log.Donef("$ %s | %s", testCmdModel.PrintableCommandArgs(), junitCmdModel.PrintableCommandArgs())
+	r.logger.Donef("$ %s | %s", testCmd.PrintableCommandArgs(), junitCmd.PrintableCommandArgs())
 	fmt.Println()
 
-	if err := testCmd.start(); err != nil {
+	if err := testCmd.Start(); err != nil {
 		r.interrupt.failWithMessage("Run: test command failed: %s", err)
 	}
 
-	if err := junitCmd.start(); err != nil {
+	if err := junitCmd.Start(); err != nil {
 		r.interrupt.failWithMessage("Run: converting test results to junit format failed: %s", err)
 	}
 
@@ -142,11 +142,11 @@ func (r realTestExecutor) executeTestLegacy(cfg config, additionalParams []strin
 	// pr is no longer being read, and testCmd.Wait() never returns.
 	testErrCh := make(chan error, 1)
 	go func() {
-		testErrCh <- testCmd.wait()
+		testErrCh <- testCmd.Wait()
 		pw.Close()
 	}()
 
-	junitErr := junitCmd.wait()
+	junitErr := junitCmd.Wait()
 	pr.Close() // unblocks pw.Write() if junitCmd exited before testCmd finished
 
 	if junitErr != nil {
@@ -154,7 +154,7 @@ func (r realTestExecutor) executeTestLegacy(cfg config, additionalParams []strin
 	}
 
 	if err := <-testErrCh; err != nil {
-		log.Errorf("Run: completing test command failed: %s", err)
+		r.logger.Errorf("Run: completing test command failed: %s", err)
 		testExecutionFailed = true
 	}
 

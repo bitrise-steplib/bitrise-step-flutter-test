@@ -5,14 +5,16 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/bitrise-io/go-utils/v2/command"
+	"github.com/bitrise-io/go-utils/v2/env"
 	"github.com/stretchr/testify/assert"
 )
 
 func TestBuildTestCmdUsesFileReporterNotMachine(t *testing.T) {
-	builder := realCommandBuilder{}
+	builder := realCommandBuilder{cmdFactory: command.NewFactory(env.NewRepository())}
 
-	cmd := builder.buildTestCmd(false, "/tmp/report.json", []string{"--reporter", "expanded"})
-	args := cmd.toModel().PrintableCommandArgs()
+	cmd := builder.buildTestCmd(false, "/tmp/report.json", []string{"--reporter", "expanded"}, nil)
+	args := cmd.PrintableCommandArgs()
 
 	// --machine must be absent: it forces the JSON reporter and hides human-readable output.
 	assert.False(t, strings.Contains(args, "--machine"), "expected --machine to be absent, got: %s", args)

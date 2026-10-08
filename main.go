@@ -3,8 +3,12 @@ package main
 import (
 	"fmt"
 
-	"github.com/bitrise-io/go-steputils/stepconf"
-	"github.com/bitrise-io/go-utils/log"
+	"github.com/bitrise-io/go-steputils/v2/export"
+	"github.com/bitrise-io/go-steputils/v2/stepconf"
+	"github.com/bitrise-io/go-utils/v2/command"
+	"github.com/bitrise-io/go-utils/v2/env"
+	"github.com/bitrise-io/go-utils/v2/fileutil"
+	"github.com/bitrise-io/go-utils/v2/log"
 )
 
 type config struct {
@@ -15,10 +19,23 @@ type config struct {
 	GenerateCodeCoverageFiles bool   `env:"generate_code_coverage_files,opt[yes,no]"`
 }
 
-var ir interrupt = realInterrupt{}
-var parser configParser = realConfigParser{interrupt: ir}
-var builder commandBuilder = realCommandBuilder{interrupt: ir}
-var test testExecutor = realTestExecutor{interrupt: ir, commandBuilder: builder, testExporter: realTestExporter{interrupt: ir}}
+var logger = log.NewLogger()
+var envRepo = env.NewRepository()
+var cmdFactory = command.NewFactory(envRepo)
+var ir interrupt = realInterrupt{logger: logger}
+var parser configParser = realConfigParser{interrupt: ir, logger: logger, envRepo: envRepo}
+var builder commandBuilder = realCommandBuilder{interrupt: ir, logger: logger, cmdFactory: cmdFactory}
+var test testExecutor = realTestExecutor{
+	interrupt:      ir,
+	logger:         logger,
+	commandBuilder: builder,
+	testExporter: realTestExporter{
+		interrupt:      ir,
+		logger:         logger,
+		outputExporter: export.NewDefaultExporter(cmdFactory),
+		fileManager:    fileutil.NewFileManager(),
+	},
+}
 
 func main() {
 	cfg := parser.parseConfig()
@@ -32,7 +49,7 @@ func main() {
 	additionalParams = append(additionalParams, testPaths...)
 
 	fmt.Println()
-	log.Infof("Running test")
+	logger.Infof("Running test")
 
 	outputBuffer, testErr := test.executeTest(cfg, additionalParams)
 	test.exportTestResults(cfg, outputBuffer)
