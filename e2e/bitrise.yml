@@ -62,11 +62,13 @@ workflows:
             set -ex
             flutter test --help | grep -q -- '--file-reporter'
 
-  _common:
+  test_golden_failure_attachments:
+    title: Attach the images of a failed golden test
     after_run:
-    - _assert_output
-    - _validate_coverage
-    title: Prepare test
+    - _golden_failure
+
+  _prepare:
+    title: Clone the test project
     steps:
     - script:
         title: Delete _tmp
@@ -93,11 +95,86 @@ workflows:
         - clone_into_dir: $BITRISE_SOURCE_DIR
         - repository_url: $SAMPLE_APP_URL
         - branch: $SAMPLE_APP_BRANCH
+
+  _common:
+    before_run:
+    - _prepare
+    after_run:
+    - _assert_output
+    - _validate_coverage
+    title: Prepare test
+    steps:
+    - script:
+        title: Save an attachment named after a sample test
+        inputs:
+        - content: |-
+            #!/bin/bash
+            set -ex
+
+            # tojunit's class name: the test file's real path without "_test.dart", "/" -> ".", "-" -> "_".
+            class_name="$(cd "$PROJECT_LOCATION" && pwd -P)/test/widget"
+            class_name="${class_name//\//.}"
+            class_name="${class_name//-/_}"
+            # Every workflow of the build exports into the same test result dir, so the label keeps this run's file apart.
+            attachment_name="${class_name}__Counter increments smoke test__e2e${RANDOM}${RANDOM}.png"
+
+            mkdir -p "$PROJECT_LOCATION/build/test-attachments"
+            echo "screenshot" > "$PROJECT_LOCATION/build/test-attachments/$attachment_name"
+            envman add --key ATTACHMENT_NAME --value "$attachment_name"
     - path::./:
         title: Execute step
         inputs:
         - project_location: $PROJECT_LOCATION
         - generate_code_coverage_files: $GENERATE_CODE_COVERAGE_FILES
+
+  _golden_failure:
+    before_run:
+    - _prepare
+    steps:
+    - script:
+        title: Add a golden test that fails
+        inputs:
+        - content: |-
+            #!/bin/bash
+            set -ex
+
+            # Every workflow of the build exports into the same test result dir, so the name keeps this run's files apart.
+            golden_name="golden_${RANDOM}${RANDOM}"
+            test_file="$PROJECT_LOCATION/test/golden_failure_test.dart"
+            cat > "$test_file" <<EOF
+            import 'package:flutter/widgets.dart';
+            import 'package:flutter_test/flutter_test.dart';
+
+            void main() {
+              testWidgets('fails against its golden', (tester) async {
+                await tester.pumpWidget(const ColoredBox(color: Color(0xFFFF0000)));
+                await expectLater(find.byType(ColoredBox), matchesGoldenFile('goldens/$golden_name.png'));
+              });
+            }
+            EOF
+
+            # Record the golden in red, then render green, so the images differ but have the same size.
+            # Older Flutter versions write no failure images for a size mismatch.
+            (cd "$PROJECT_LOCATION" && flutter test --update-goldens test/golden_failure_test.dart)
+            sed -i.bak 's/0xFFFF0000/0xFF00FF00/' "$test_file"
+            rm "$test_file.bak"
+            envman add --key GOLDEN_NAME --value "$golden_name"
+    - path::./:
+        title: Execute step with a failing golden test
+        is_skippable: true
+        inputs:
+        - project_location: $PROJECT_LOCATION
+    - script:
+        title: Check that the golden failure images are linked
+        inputs:
+        - content: |-
+            #!/bin/bash
+            set -ex
+
+            report_dir="$(dirname "$(ls "$BITRISE_TEST_RESULT_DIR"/../*/Flutter\ test\ results/"${GOLDEN_NAME}_testImage.png")")"
+            for image in masterImage testImage isolatedDiff maskedDiff; do
+              grep -q "value=\"${GOLDEN_NAME}_${image}.png\"" "$report_dir/flutter_junit_test_results.xml"
+            done
 
   _assert_output:
     steps:
@@ -123,6 +200,9 @@ workflows:
               echo "JSON report data is missing or empty."
               exit 1
             fi
+
+            echo "Checking for the attachment next to the JUNIT output"
+            ls "$BITRISE_TEST_RESULT_DIR"/../*/Flutter\ test\ results/"$ATTACHMENT_NAME"
 
   _validate_coverage:
     steps:
