@@ -23,8 +23,8 @@ On Flutter 3.10 and newer the Step prints the normal, human-readable `flutter te
 ### Attachments
 Screenshots, recordings and logs show up under the test that produced them in the Test Reports:
 
-- When a golden test (`matchesGoldenFile`) fails, its failure images are attached to the test automatically.
-- Any other file is attached if it is saved under the **Project Location** with a name that follows the `<classname>__<name>[__run<k>]__<label>.<ext>` convention. The label is required, must not contain `__` and must not start with `_`. Files tracked by git, such as committed golden images, are never attached.
+- When a golden test (`matchesGoldenFile`) fails with Flutter's default golden file comparator, its failure images are attached to the test automatically.
+- Any other file is attached if it is saved under the **Project Location** with a name that follows the `<classname>__<name>[__run<k>]__<label>.<ext>` convention. The label is required, must not contain `__` and must not start with `_`. Files tracked by git, such as committed golden images, are never attached. This needs Deploy to Bitrise.io 2.26.0 or newer.
 
 In the Step's test report, `classname` is the absolute path of the test file without `_test.dart`, with `/` replaced by `.` and `-` by `_`, and `name` is the full test name, including its group names. For example, a screenshot of the `shows an error` test in the `Login` group of `/Users/vagrant/git/test/login-flow_test.dart` is named `.Users.vagrant.git.test.login_flow__Login shows an error__1.png`. Write the characters `" * / : < > ? \ |` as `_`.
 
