@@ -1,8 +1,9 @@
 module github.com/bitrise-steplib/bitrise-step-flutter-test
 
-go 1.21
+go 1.22
 
 require (
+	github.com/bitrise-io/go-android/v2 v2.0.0-alpha.19
 	github.com/bitrise-io/go-steputils/v2 v2.0.0-alpha.61
 	github.com/bitrise-io/go-utils/v2 v2.0.0-alpha.39
 	github.com/bmatcuk/doublestar/v3 v3.0.0

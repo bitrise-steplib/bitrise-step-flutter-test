@@ -107,4 +107,5 @@ func TestResultsAreExportedFromNonRootProject(t *testing.T) {
 
 	// Assert
 	assert.Equal(t, result.exportPath, testProjectLocation+"/"+testResultFileName)
+	assert.Equal(t, result.attachmentsJUnit, testProjectLocation+"/"+testResultFileName)
 }

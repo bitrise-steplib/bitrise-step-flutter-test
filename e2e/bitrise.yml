@@ -93,6 +93,23 @@ workflows:
         - clone_into_dir: $BITRISE_SOURCE_DIR
         - repository_url: $SAMPLE_APP_URL
         - branch: $SAMPLE_APP_BRANCH
+    - script:
+        title: Save an attachment named after a sample test
+        inputs:
+        - content: |-
+            #!/bin/bash
+            set -ex
+
+            # tojunit's class name: the test file's real path without "_test.dart", "/" -> ".", "-" -> "_".
+            class_name="$(cd "$PROJECT_LOCATION" && pwd -P)/test/widget"
+            class_name="${class_name//\//.}"
+            class_name="${class_name//-/_}"
+            # Every workflow of the build exports into the same test result dir, so the label keeps this run's file apart.
+            attachment_name="${class_name}__Counter increments smoke test__e2e${RANDOM}${RANDOM}.png"
+
+            mkdir -p "$PROJECT_LOCATION/build/test-attachments"
+            echo "screenshot" > "$PROJECT_LOCATION/build/test-attachments/$attachment_name"
+            envman add --key ATTACHMENT_NAME --value "$attachment_name"
     - path::./:
         title: Execute step
         inputs:
@@ -121,6 +138,14 @@ workflows:
               echo "JSON report data exists and is non-empty."
             else
               echo "JSON report data is missing or empty."
+              exit 1
+            fi
+
+            echo "Checking for the attachment next to the JUNIT output"
+            if ls "$BITRISE_TEST_RESULT_DIR"/../*/Flutter\ test\ results/"$ATTACHMENT_NAME" 1> /dev/null 2>&1; then
+              echo "Attachment exists."
+            else
+              echo "Attachment does not exist."
               exit 1
             fi
 
