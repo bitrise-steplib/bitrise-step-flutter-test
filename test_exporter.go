@@ -7,6 +7,7 @@ import (
 	"path/filepath"
 
 	"github.com/bitrise-io/go-steputils/v2/export"
+	"github.com/bitrise-io/go-steputils/v2/testattachment"
 	"github.com/bitrise-io/go-steputils/v2/testresultexport" //nolint:staticcheck // deprecated for new steps only, the package exists for this one
 	"github.com/bitrise-io/go-utils/v2/fileutil"
 	"github.com/bitrise-io/go-utils/v2/log"
@@ -28,10 +29,12 @@ type testExporter interface {
 }
 
 type realTestExporter struct {
-	interrupt      interrupt
-	logger         log.Logger
-	outputExporter export.Exporter
-	fileManager    fileutil.FileManager
+	interrupt           interrupt
+	logger              log.Logger
+	outputExporter      export.Exporter
+	fileManager         fileutil.FileManager
+	attachmentCollector testattachment.Collector
+	testDeployDir       string
 }
 
 func (r realTestExporter) copyBufferToDeployPath(jsonBuffer bytes.Buffer) string {
@@ -54,7 +57,8 @@ func (r realTestExporter) exportTestResultsToResultPath(cfg config, testResultPa
 
 func (r realTestExporter) exportAttachments(cfg config) {
 	reportDir := filepath.Join(cfg.TestResultsDir, testName)
-	exportTestAttachments(r.logger, r.fileManager, cfg.ProjectLocation, reportDir)
+	exportGoldenFailureImages(r.logger, r.fileManager, reportDir)
+	exportConventionAttachments(r.logger, r.attachmentCollector, cfg.ProjectLocation, r.testDeployDir, filepath.Join(reportDir, testResultFileName), reportDir)
 }
 
 func (r realTestExporter) exportCoverage(projectLocation string) {

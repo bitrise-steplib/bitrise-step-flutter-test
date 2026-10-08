@@ -7,11 +7,16 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/bitrise-io/go-steputils/v2/testattachment"
+	"github.com/bitrise-io/go-utils/v2/command"
+	"github.com/bitrise-io/go-utils/v2/env"
 	"github.com/bitrise-io/go-utils/v2/fileutil"
 	"github.com/bitrise-io/go-utils/v2/log"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
+
+const loginClassName = ".Users.vagrant.git.test.login"
 
 // The shape tojunit writes: a test's prints go to its system-out, its errors to its error.
 func junitXML(errorOutput, systemOut string) string {
@@ -28,90 +33,125 @@ func junitXML(errorOutput, systemOut string) string {
 `
 }
 
-func Test_exportTestAttachments_marker(t *testing.T) {
-	projectDir, reportDir := setUpReport(t, junitXML("", "[[ATTACHMENT|build/shots/error.png]]"))
-	writeTestFile(t, filepath.Join(projectDir, "build", "shots", "error.png"), "screenshot")
-
-	exportTestAttachments(log.NewLogger(), fileutil.NewFileManager(), projectDir, reportDir)
-
-	assertTestFile(t, filepath.Join(reportDir, "error.png"), "screenshot")
-	assert.Equal(t, []string{"error.png"}, attachmentsOf(t, reportDir, "Login shows an error"))
-	assert.Empty(t, attachmentsOf(t, reportDir, "Login accepts a valid password"))
-}
-
-func Test_exportTestAttachments_goldenFailure(t *testing.T) {
-	projectDir := t.TempDir()
-	failuresDir := filepath.Join(projectDir, "test", "failures")
-	// The wrapped shape flutter_test prints a golden failure in. A size mismatch writes only two images.
-	output := `══╡ EXCEPTION CAUGHT BY FLUTTER TEST FRAMEWORK ╞═══
+func goldenFailureOutput(golden, failuresDir string) string {
+	// The wrapped shape flutter_test prints a golden failure in.
+	return `══╡ EXCEPTION CAUGHT BY FLUTTER TEST FRAMEWORK ╞═══
 The following assertion was thrown while running async test code:
-Golden "goldens/login.png": Pixel test failed, image sizes do not match.
-Master Image: 800 X 600
-Test Image: 400 X 300
+Golden "` + golden + `": Pixel test failed, 1.00%, 4800px diff detected.
 Failure feedback can be found at
 ` + failuresDir + `
 
 When the exception was thrown, this was the stack:`
-	reportDir := writeReport(t, junitXML("Test failed. See exception logs above.", output))
+}
+
+func Test_exportGoldenFailureImages(t *testing.T) {
+	failuresDir := filepath.Join(t.TempDir(), "test", "failures")
+	reportDir := writeReport(t, junitXML("Test failed. See exception logs above.", goldenFailureOutput("goldens/login.png", failuresDir)))
+	for _, suffix := range []string{"masterImage", "testImage", "isolatedDiff", "maskedDiff"} {
+		writeTestFile(t, filepath.Join(failuresDir, "login_"+suffix+".png"), suffix)
+	}
+
+	exportGoldenFailureImages(log.NewLogger(), fileutil.NewFileManager(), reportDir)
+
+	assert.Equal(t, []string{"login_masterImage.png", "login_testImage.png", "login_isolatedDiff.png", "login_maskedDiff.png"}, attachmentsOf(t, reportDir, "Login shows an error"))
+	assert.Empty(t, attachmentsOf(t, reportDir, "Login accepts a valid password"))
+	assertTestFile(t, filepath.Join(reportDir, "login_maskedDiff.png"), "maskedDiff")
+}
+
+func Test_exportGoldenFailureImages_sizeMismatch(t *testing.T) {
+	failuresDir := filepath.Join(t.TempDir(), "test", "failures")
+	output := `Golden "goldens/login.png": Pixel test failed, image sizes do not match.
+Master Image: 800 X 600
+Test Image: 400 X 300
+Failure feedback can be found at ` + failuresDir
+	reportDir := writeReport(t, junitXML(output, ""))
+	// A size mismatch writes only two images.
 	writeTestFile(t, filepath.Join(failuresDir, "login_masterImage.png"), "master")
 	writeTestFile(t, filepath.Join(failuresDir, "login_testImage.png"), "test")
 	var logs bytes.Buffer
 
-	exportTestAttachments(log.NewLogger(log.WithOutput(&logs)), fileutil.NewFileManager(), projectDir, reportDir)
+	exportGoldenFailureImages(log.NewLogger(log.WithOutput(&logs)), fileutil.NewFileManager(), reportDir)
 
 	assert.Equal(t, []string{"login_masterImage.png", "login_testImage.png"}, attachmentsOf(t, reportDir, "Login shows an error"))
 	assert.NotContains(t, logs.String(), "Skipping")
 }
 
-func Test_exportTestAttachments_goldenFailureInError(t *testing.T) {
-	projectDir := t.TempDir()
-	failuresDir := filepath.Join(projectDir, "test", "failures")
-	output := `Golden "goldens/login.png": Pixel test failed, 1.00%, 4800px diff detected.
-Failure feedback can be found at ` + failuresDir
-	reportDir := writeReport(t, junitXML(output, ""))
-	for _, suffix := range []string{"masterImage", "testImage", "isolatedDiff", "maskedDiff"} {
-		writeTestFile(t, filepath.Join(failuresDir, "login_"+suffix+".png"), suffix)
-	}
+func Test_exportGoldenFailureImages_goldenNameWithSpace(t *testing.T) {
+	failuresDir := filepath.Join(t.TempDir(), "test", "failures")
+	// flutter_test prints the golden as a URI but names the images after the decoded file name.
+	reportDir := writeReport(t, junitXML("", goldenFailureOutput("goldens/login%20screen.png", failuresDir)))
+	writeTestFile(t, filepath.Join(failuresDir, "login screen_masterImage.png"), "master")
 
-	exportTestAttachments(log.NewLogger(), fileutil.NewFileManager(), projectDir, reportDir)
+	exportGoldenFailureImages(log.NewLogger(), fileutil.NewFileManager(), reportDir)
 
-	assert.Equal(t, []string{"login_masterImage.png", "login_testImage.png", "login_isolatedDiff.png", "login_maskedDiff.png"}, attachmentsOf(t, reportDir, "Login shows an error"))
+	assert.Equal(t, []string{"login screen_masterImage.png"}, attachmentsOf(t, reportDir, "Login shows an error"))
 }
 
-func Test_exportTestAttachments_sameFileNameTwice(t *testing.T) {
-	projectDir, reportDir := setUpReport(t, junitXML("", "[[ATTACHMENT|a/screen.png]]\n[[ATTACHMENT|b/screen.png]]"))
-	writeTestFile(t, filepath.Join(projectDir, "a", "screen.png"), "a")
-	writeTestFile(t, filepath.Join(projectDir, "b", "screen.png"), "b")
+func Test_exportGoldenFailureImages_sameNamesFromTwoFolders(t *testing.T) {
+	dir := t.TempDir()
+	firstDir := filepath.Join(dir, "a", "failures")
+	secondDir := filepath.Join(dir, "b", "failures")
+	reportDir := writeReport(t, junitXML(goldenFailureOutput("goldens/Screen.png", secondDir), goldenFailureOutput("goldens/screen.png", firstDir)))
+	writeTestFile(t, filepath.Join(firstDir, "screen_masterImage.png"), "a")
+	writeTestFile(t, filepath.Join(secondDir, "Screen_masterImage.png"), "b")
 
-	exportTestAttachments(log.NewLogger(), fileutil.NewFileManager(), projectDir, reportDir)
+	exportGoldenFailureImages(log.NewLogger(), fileutil.NewFileManager(), reportDir)
 
-	assert.Equal(t, []string{"screen.png", "screen-2.png"}, attachmentsOf(t, reportDir, "Login shows an error"))
-	assertTestFile(t, filepath.Join(reportDir, "screen-2.png"), "b")
+	// The names differ only in case, which the macOS file system treats as the same file.
+	assert.Equal(t, []string{"screen_masterImage.png", "Screen_masterImage-2.png"}, attachmentsOf(t, reportDir, "Login shows an error"))
+	assertTestFile(t, filepath.Join(reportDir, "Screen_masterImage-2.png"), "b")
 }
 
-func Test_exportTestAttachments_noAttachmentsKeepsTheReport(t *testing.T) {
-	xml := junitXML("", "no marker here")
-	projectDir, reportDir := setUpReport(t, xml)
-
-	exportTestAttachments(log.NewLogger(), fileutil.NewFileManager(), projectDir, reportDir)
-
-	assertTestFile(t, filepath.Join(reportDir, testResultFileName), xml)
-}
-
-func Test_exportTestAttachments_missingFile(t *testing.T) {
-	xml := junitXML("", "[[ATTACHMENT|build/missing.png]]")
-	projectDir, reportDir := setUpReport(t, xml)
+func Test_exportGoldenFailureImages_noImagesKeepsTheReport(t *testing.T) {
+	xml := junitXML("", goldenFailureOutput("goldens/login.png", filepath.Join(t.TempDir(), "failures")))
+	reportDir := writeReport(t, xml)
 	var logs bytes.Buffer
 
-	exportTestAttachments(log.NewLogger(log.WithOutput(&logs)), fileutil.NewFileManager(), projectDir, reportDir)
+	exportGoldenFailureImages(log.NewLogger(log.WithOutput(&logs)), fileutil.NewFileManager(), reportDir)
 
-	assert.Contains(t, logs.String(), filepath.Join(projectDir, "build", "missing.png"))
+	assert.Empty(t, logs.String())
 	assertTestFile(t, filepath.Join(reportDir, testResultFileName), xml)
 }
 
-func setUpReport(t *testing.T, xml string) (projectDir, reportDir string) {
-	t.Helper()
-	return t.TempDir(), writeReport(t, xml)
+func Test_exportConventionAttachments(t *testing.T) {
+	projectDir := t.TempDir()
+	reportDir := writeReport(t, junitXML("", ""))
+	attachmentName := loginClassName + "__Login shows an error__1.png"
+	writeTestFile(t, filepath.Join(projectDir, "build", "screenshots", attachmentName), "screenshot")
+
+	exportConventionAttachments(log.NewLogger(), newTestCollector(), projectDir, t.TempDir(), filepath.Join(reportDir, testResultFileName), reportDir)
+
+	assertTestFile(t, filepath.Join(reportDir, attachmentName), "screenshot")
+}
+
+func Test_exportConventionAttachments_invalidXML(t *testing.T) {
+	projectDir := t.TempDir()
+	reportDir := writeReport(t, "not xml")
+	attachmentName := loginClassName + "__Login shows an error__1.png"
+	writeTestFile(t, filepath.Join(projectDir, attachmentName), "screenshot")
+	var logs bytes.Buffer
+
+	exportConventionAttachments(log.NewLogger(log.WithOutput(&logs)), newTestCollector(), projectDir, t.TempDir(), filepath.Join(reportDir, testResultFileName), reportDir)
+
+	assert.Contains(t, logs.String(), "Failed to read test cases")
+	assert.NoFileExists(t, filepath.Join(reportDir, attachmentName))
+}
+
+func Test_exportConventionAttachments_missingDeployDir(t *testing.T) {
+	projectDir := t.TempDir()
+	reportDir := writeReport(t, junitXML("", ""))
+	attachmentName := loginClassName + "__Login shows an error__1.png"
+	writeTestFile(t, filepath.Join(projectDir, attachmentName), "screenshot")
+	var logs bytes.Buffer
+
+	exportConventionAttachments(log.NewLogger(log.WithOutput(&logs)), newTestCollector(), projectDir, "", filepath.Join(reportDir, testResultFileName), reportDir)
+
+	assert.Contains(t, logs.String(), "BITRISE_TEST_DEPLOY_DIR is not set")
+	assertTestFile(t, filepath.Join(reportDir, attachmentName), "screenshot")
+}
+
+func newTestCollector() testattachment.Collector {
+	return testattachment.NewCollector(command.NewFactory(env.NewRepository()), fileutil.NewFileManager())
 }
 
 func writeReport(t *testing.T, xml string) string {

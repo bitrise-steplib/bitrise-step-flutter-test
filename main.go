@@ -5,6 +5,7 @@ import (
 
 	"github.com/bitrise-io/go-steputils/v2/export"
 	"github.com/bitrise-io/go-steputils/v2/stepconf"
+	"github.com/bitrise-io/go-steputils/v2/testattachment"
 	"github.com/bitrise-io/go-utils/v2/command"
 	"github.com/bitrise-io/go-utils/v2/env"
 	"github.com/bitrise-io/go-utils/v2/fileutil"
@@ -22,6 +23,7 @@ type config struct {
 var logger = log.NewLogger()
 var envRepo = env.NewRepository()
 var cmdFactory = command.NewFactory(envRepo)
+var fileManager = fileutil.NewFileManager()
 var ir interrupt = realInterrupt{logger: logger}
 var parser configParser = realConfigParser{interrupt: ir, logger: logger, envRepo: envRepo}
 var builder commandBuilder = realCommandBuilder{interrupt: ir, logger: logger, cmdFactory: cmdFactory}
@@ -30,10 +32,12 @@ var test testExecutor = realTestExecutor{
 	logger:         logger,
 	commandBuilder: builder,
 	testExporter: realTestExporter{
-		interrupt:      ir,
-		logger:         logger,
-		outputExporter: export.NewDefaultExporter(cmdFactory),
-		fileManager:    fileutil.NewFileManager(),
+		interrupt:           ir,
+		logger:              logger,
+		outputExporter:      export.NewDefaultExporter(cmdFactory),
+		fileManager:         fileManager,
+		attachmentCollector: testattachment.NewCollector(cmdFactory, fileManager),
+		testDeployDir:       envRepo.Get("BITRISE_TEST_DEPLOY_DIR"),
 	},
 }
 

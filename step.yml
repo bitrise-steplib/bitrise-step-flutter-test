@@ -20,7 +20,9 @@ description: |-
   Screenshots, recordings and logs show up under the test that produced them in the Test Reports:
 
   - When a golden test (`matchesGoldenFile`) fails, its failure images are attached to the test automatically.
-  - To attach any other file, print `[[ATTACHMENT|<path>]]` from the test, for example `print('[[ATTACHMENT|build/screenshots/login.png]]');`. A relative path is resolved from the **Project Location**.
+  - Any other file is attached if it is saved under the **Project Location** with a name that follows the `<classname>__<name>[__run<k>]__<label>.<ext>` convention. The label is required, must not contain `__` and must not start with `_`. Files tracked by git, such as committed golden images, are never attached.
+
+  In the Step's test report, `classname` is the absolute path of the test file without `_test.dart`, with `/` replaced by `.` and `-` by `_`, and `name` is the full test name, including its group names. For example, a screenshot of the `shows an error` test in the `Login` group of `/Users/vagrant/git/test/login-flow_test.dart` is named `.Users.vagrant.git.test.login_flow__Login shows an error__1.png`. Write the characters `" * / : < > ? \ |` as `_`.
 
   Supported extensions: `png`, `jpg`, `jpeg`, `mp4`, `webm`, `ogg`, `txt`, `log`.
 

@@ -105,28 +105,21 @@ workflows:
     title: Prepare test
     steps:
     - script:
-        title: Add a test that attaches a file
+        title: Save an attachment named after a sample test
         inputs:
         - content: |-
             #!/bin/bash
             set -ex
 
-            # Every workflow of the build exports into the same test result dir, so the name keeps this run's file apart.
-            attachment_name="e2e-${RANDOM}${RANDOM}.txt"
-            cat > "$PROJECT_LOCATION/test/attachment_test.dart" <<EOF
-            import 'dart:io';
+            # tojunit's class name: the test file's real path without "_test.dart", "/" -> ".", "-" -> "_".
+            class_name="$(cd "$PROJECT_LOCATION" && pwd -P)/test/widget"
+            class_name="${class_name//\//.}"
+            class_name="${class_name//-/_}"
+            # Every workflow of the build exports into the same test result dir, so the label keeps this run's file apart.
+            attachment_name="${class_name}__Counter increments smoke test__e2e${RANDOM}${RANDOM}.png"
 
-            import 'package:flutter_test/flutter_test.dart';
-
-            void main() {
-              test('saves an attachment', () {
-                File('build/$attachment_name')
-                  ..createSync(recursive: true)
-                  ..writeAsStringSync('attachment');
-                print('[[ATTACHMENT|build/$attachment_name]]');
-              });
-            }
-            EOF
+            mkdir -p "$PROJECT_LOCATION/build/test-attachments"
+            echo "screenshot" > "$PROJECT_LOCATION/build/test-attachments/$attachment_name"
             envman add --key ATTACHMENT_NAME --value "$attachment_name"
     - path::./:
         title: Execute step
@@ -208,9 +201,8 @@ workflows:
               exit 1
             fi
 
-            echo "Checking for the attachment and its link in the JUNIT output"
-            report_dir="$(dirname "$(ls "$BITRISE_TEST_RESULT_DIR"/../*/Flutter\ test\ results/"$ATTACHMENT_NAME")")"
-            grep -q "value=\"$ATTACHMENT_NAME\"" "$report_dir/flutter_junit_test_results.xml"
+            echo "Checking for the attachment next to the JUNIT output"
+            ls "$BITRISE_TEST_RESULT_DIR"/../*/Flutter\ test\ results/"$ATTACHMENT_NAME"
 
   _validate_coverage:
     steps:

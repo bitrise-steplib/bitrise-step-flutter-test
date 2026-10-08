@@ -22,19 +22,18 @@ import (
 const attachmentPropertyPrefix = "attachment_"
 
 var (
-	attachmentMarkerPattern = regexp.MustCompile(`\[\[ATTACHMENT\|([^\]]+)\]\]`)
-	goldenFailurePattern    = regexp.MustCompile(`Golden "([^"]+)": `)
+	goldenFailurePattern = regexp.MustCompile(`Golden "([^"]+)": `)
 	// The test framework wraps the message, so the folder is usually on the next line.
 	failureFeedbackPattern   = regexp.MustCompile(`Failure feedback can be found at\s+(\S.*)`)
 	goldenFailureImageSuffix = []string{"masterImage", "testImage", "isolatedDiff", "maskedDiff"}
 )
 
-// exportTestAttachments links the files a test reported in its output to its test case in the
-// exported JUnit XML: files printed as [[ATTACHMENT|<path>]] and the images of a failed golden
-// test. tojunit writes a test's prints to its system-out, and its errors to its failure or error.
-// The files are copied next to the XML and referenced by attachment_N properties.
+// exportGoldenFailureImages links the images flutter_test writes for a failed golden test to its
+// test case in the exported JUnit XML. The failure message names the golden and the folder of the
+// images, and tojunit writes it to the test case's system-out, failure or error. The images are
+// copied next to the XML and referenced by attachment_N properties.
 // Problems are logged as warnings: the test result itself is already exported.
-func exportTestAttachments(logger log.Logger, fileManager fileutil.FileManager, projectDir, reportDir string) {
+func exportGoldenFailureImages(logger log.Logger, fileManager fileutil.FileManager, reportDir string) {
 	junitPath := filepath.Join(reportDir, testResultFileName)
 	report, err := readJUnitReport(junitPath)
 	if err != nil {
@@ -49,7 +48,7 @@ func exportTestAttachments(logger log.Logger, fileManager fileutil.FileManager, 
 
 	exported := 0
 	forEachTestCase(&report, func(testCase *testreport.TestCase) {
-		for _, file := range filesInOutput(testCase, projectDir) {
+		for _, file := range goldenFailureImages(testCase) {
 			fileName, err := copyAttachment(fileManager, file, reportDir, usedNames)
 			if err != nil {
 				logger.Warnf("Skipping attachment %s of %q: %s", file, testCase.Name, err)
@@ -67,7 +66,7 @@ func exportTestAttachments(logger log.Logger, fileManager fileutil.FileManager, 
 		logger.Warnf("Failed to link attachments in the test report: %s", err)
 		return
 	}
-	logger.Donef("Exported %d test attachments.", exported)
+	logger.Donef("Exported %d golden failure images.", exported)
 }
 
 func forEachTestCase(report *testreport.TestReport, fn func(*testreport.TestCase)) {
@@ -85,11 +84,9 @@ func forEachTestCase(report *testreport.TestReport, fn func(*testreport.TestCase
 	}
 }
 
-// filesInOutput returns the files a test case reported: the paths of [[ATTACHMENT|<path>]]
-// markers, resolved from projectDir (the working directory of `flutter test`), and the images a
-// failed golden test wrote. A golden failure names its failures folder, and the images in it are
-// named after the golden file.
-func filesInOutput(testCase *testreport.TestCase, projectDir string) []string {
+// goldenFailureImages returns the images of the golden failures in a test case's output. A golden
+// failure names its failures folder, and the images in it are named after the golden file.
+func goldenFailureImages(testCase *testreport.TestCase) []string {
 	var output []string
 	if testCase.SystemOut != nil {
 		output = append(output, testCase.SystemOut.Value)
@@ -101,21 +98,8 @@ func filesInOutput(testCase *testreport.TestCase, projectDir string) []string {
 		output = append(output, testCase.Error.Value)
 	}
 
-	var files []string
-	add := func(file string) {
-		if !slices.Contains(files, file) {
-			files = append(files, file)
-		}
-	}
+	var images []string
 	for _, text := range output {
-		for _, match := range attachmentMarkerPattern.FindAllStringSubmatch(text, -1) {
-			file := strings.TrimSpace(match[1])
-			if !filepath.IsAbs(file) {
-				file = filepath.Join(projectDir, file)
-			}
-			add(file)
-		}
-
 		feedback := failureFeedbackPattern.FindStringSubmatch(text)
 		if feedback == nil {
 			continue
@@ -125,21 +109,26 @@ func filesInOutput(testCase *testreport.TestCase, projectDir string) []string {
 			failuresDir = unescaped
 		}
 		for _, match := range goldenFailurePattern.FindAllStringSubmatch(text, -1) {
+			// The message shows the golden as a URI, the images are named after the decoded file name.
 			golden := path.Base(match[1])
+			if unescaped, err := url.PathUnescape(golden); err == nil {
+				golden = unescaped
+			}
 			stem := strings.TrimSuffix(golden, path.Ext(golden))
 			// A size mismatch writes only some of the images, or none on older Flutter versions.
 			for _, suffix := range goldenFailureImageSuffix {
-				if image := filepath.Join(failuresDir, stem+"_"+suffix+".png"); exists(image) {
-					add(image)
+				if image := filepath.Join(failuresDir, stem+"_"+suffix+".png"); exists(image) && !slices.Contains(images, image) {
+					images = append(images, image)
 				}
 			}
 		}
 	}
-	return files
+	return images
 }
 
 // copyAttachment copies the file to the top of the report folder under a name no other file of the
-// report uses, and returns that name.
+// report uses, and returns that name. Names are compared case-insensitively, because the macOS file
+// system is.
 func copyAttachment(fileManager fileutil.FileManager, src, reportDir string, usedNames map[string]bool) (string, error) {
 	info, err := os.Stat(src)
 	if err != nil {
@@ -156,7 +145,7 @@ func copyAttachment(fileManager fileutil.FileManager, src, reportDir string, use
 	if err := fileManager.CopyFile(src, filepath.Join(reportDir, fileName), &fileutil.CopyOptions{}); err != nil {
 		return "", err
 	}
-	usedNames[fileName] = true
+	usedNames[strings.ToLower(fileName)] = true
 	return fileName, nil
 }
 
@@ -164,7 +153,7 @@ func uniqueFileName(fileName string, usedNames map[string]bool) string {
 	ext := filepath.Ext(fileName)
 	stem := strings.TrimSuffix(fileName, ext)
 	candidate := fileName
-	for i := 2; usedNames[candidate]; i++ {
+	for i := 2; usedNames[strings.ToLower(candidate)]; i++ {
 		candidate = stem + "-" + strconv.Itoa(i) + ext
 	}
 	return candidate
@@ -177,7 +166,7 @@ func fileNamesIn(dir string) (map[string]bool, error) {
 	}
 	names := map[string]bool{}
 	for _, entry := range entries {
-		names[entry.Name()] = true
+		names[strings.ToLower(entry.Name())] = true
 	}
 	return names, nil
 }
