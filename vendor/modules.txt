@@ -1,7 +1,13 @@
+# github.com/bitrise-io/go-android/v2 v2.0.0-alpha.19
+## explicit; go 1.22
+github.com/bitrise-io/go-android/v2/testresult/junitxml
 # github.com/bitrise-io/go-steputils/v2 v2.0.0-alpha.61
 ## explicit; go 1.21
 github.com/bitrise-io/go-steputils/v2/export
 github.com/bitrise-io/go-steputils/v2/stepconf
+github.com/bitrise-io/go-steputils/v2/testasset
+github.com/bitrise-io/go-steputils/v2/testattachment
+github.com/bitrise-io/go-steputils/v2/testreport
 github.com/bitrise-io/go-steputils/v2/testresultexport
 # github.com/bitrise-io/go-utils/v2 v2.0.0-alpha.39
 ## explicit; go 1.21
@@ -36,6 +42,7 @@ github.com/pmezard/go-difflib/difflib
 # github.com/stretchr/testify v1.9.0
 ## explicit; go 1.17
 github.com/stretchr/testify/assert
+github.com/stretchr/testify/require
 # gopkg.in/yaml.v3 v3.0.1
 ## explicit
 gopkg.in/yaml.v3

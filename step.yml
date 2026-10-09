@@ -16,6 +16,16 @@ description: |-
   ### Test output in the build log
   On Flutter 3.10 and newer the Step prints the normal, human-readable `flutter test` output to the build log, and you can control its verbosity with a `--reporter` flag (for example `--reporter expanded`) in the **Additional parameters** field. On older Flutter versions the log falls back to the raw machine JSON stream. The machine-readable JSON needed for the JUnit test report and the `BITRISE_FLUTTER_TESTRESULT_PATH` output is collected separately, so it does not affect what you see in the log. Do not pass `--file-reporter` in **Additional parameters** — the Step manages it internally.
 
+  ### Attachments
+  Screenshots, recordings and logs show up under the test that produced them in the Test Reports:
+
+  - When a golden test (`matchesGoldenFile`) fails with Flutter's default golden file comparator, its failure images are attached to the test automatically.
+  - Any other file is attached if it is saved under the **Project Location** with a name that follows the `<classname>__<name>[__run<k>]__<label>.<ext>` convention. The label is required, must not contain `__` and must not start with `_`. Files tracked by git, such as committed golden images, are never attached. This needs Deploy to Bitrise.io 2.26.0 or newer.
+
+  In the Step's test report, `classname` is the absolute path of the test file without `_test.dart`, with `/` replaced by `.` and `-` by `_`, and `name` is the full test name, including its group names. For example, a screenshot of the `shows an error` test in the `Login` group of `/Users/vagrant/git/test/login-flow_test.dart` is named `.Users.vagrant.git.test.login_flow__Login shows an error__1.png`. Write the characters `" * / : < > ? \ |` as `_`.
+
+  Supported extensions: `png`, `jpg`, `jpeg`, `mp4`, `webm`, `ogg`, `txt`, `log`.
+
   ### Troubleshooting
   Make sure the **Project Location** input of the Flutter Test Step is correct.
   The default value is the Environment Variable (Env Var) created for your Flutter project’s location.
