@@ -48,15 +48,26 @@ func (r realTestExporter) exportDeployPath(testResultDeployPath string) {
 	r.logger.Donef("Test results exported in JUnit format as $BITRISE_FLUTTER_TESTRESULT_PATH")
 }
 
+// testNameSuffix tells the packages apart in the test report when the selection runs
+// several of them in one step.
+var testNameSuffix string
+
+func currentTestName() string {
+	if testNameSuffix == "" {
+		return testName
+	}
+	return testName + " (" + testNameSuffix + ")"
+}
+
 func (r realTestExporter) exportTestResultsToResultPath(cfg config, testResultPath string) {
 	exporter := testresultexport.NewExporter(cfg.TestResultsDir, r.fileManager)
-	if err := exporter.ExportTest(testName, testResultPath); err != nil {
+	if err := exporter.ExportTest(currentTestName(), testResultPath); err != nil {
 		r.interrupt.failWithMessage("Export outputs: failed to export test result: %s", err)
 	}
 }
 
 func (r realTestExporter) exportAttachments(cfg config) {
-	reportDir := filepath.Join(cfg.TestResultsDir, testName)
+	reportDir := filepath.Join(cfg.TestResultsDir, currentTestName())
 	exportGoldenFailureImages(r.logger, r.fileManager, reportDir)
 	exportConventionAttachments(r.logger, r.attachmentCollector, cfg.ProjectLocation, r.testDeployDir, filepath.Join(reportDir, testResultFileName), reportDir)
 }
