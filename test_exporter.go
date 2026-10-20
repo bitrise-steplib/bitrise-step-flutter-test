@@ -5,6 +5,7 @@ import (
 	"os"
 	"path"
 	"path/filepath"
+	"strings"
 
 	"github.com/bitrise-io/go-steputils/v2/export"
 	"github.com/bitrise-io/go-steputils/v2/testattachment"
@@ -38,7 +39,17 @@ type realTestExporter struct {
 }
 
 func (r realTestExporter) copyBufferToDeployPath(jsonBuffer bytes.Buffer) string {
-	return copyBufferToDeployDir(jsonBuffer.Bytes(), testResultJSONFileName, r.interrupt)
+	return copyBufferToDeployDir(jsonBuffer.Bytes(), deployFileName(testResultJSONFileName), r.interrupt)
+}
+
+// deployFileName keeps one package's deploy artifact from overwriting another's when the
+// selection runs several packages in one step.
+func deployFileName(name string) string {
+	if testNameSuffix == "" {
+		return name
+	}
+	ext := filepath.Ext(name)
+	return strings.TrimSuffix(name, ext) + "_" + testNameSuffix + ext
 }
 
 func (r realTestExporter) exportDeployPath(testResultDeployPath string) {
@@ -78,7 +89,7 @@ func (r realTestExporter) exportCoverage(projectLocation string) {
 		r.interrupt.failWithMessage("Export outputs: failed to open %s", coverageRelativePath)
 	}
 
-	covDeployPath := copyBufferToDeployDir(covData, coverageFileName, r.interrupt)
+	covDeployPath := copyBufferToDeployDir(covData, deployFileName(coverageFileName), r.interrupt)
 
 	if err := r.outputExporter.ExportOutput("BITRISE_FLUTTER_COVERAGE_PATH", covDeployPath); err != nil {
 		r.interrupt.failWithMessage("Export outputs: failed to export $BITRISE_FLUTTER_COVERAGE_PATH: %s", err)
