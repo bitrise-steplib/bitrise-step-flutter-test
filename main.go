@@ -52,7 +52,7 @@ func main() {
 
 	additionalParams := parser.parseAdditionalParams(cfg.AdditionalParams)
 
-	decision, err := processTestSelection(cfg.TestSelection, cfg.OnEmptySelection)
+	sel, decision, err := processTestSelection(cfg.TestSelection, cfg.OnEmptySelection)
 	if err != nil {
 		ir.failWithMessage("Process config: %s", err)
 		return
@@ -63,8 +63,13 @@ func main() {
 		return
 	}
 	packageDirs := []string{cfg.ProjectLocation}
-	if decision.Action == testselection.RunSelected {
+	switch {
+	case decision.Action == testselection.RunSelected:
 		packageDirs = selectedPackageDirs(decision.Tests)
+	case sel != nil && len(sel.Selected("flutter")) > 0:
+		// A full or shadow run still lists every candidate package, so a monorepo runs
+		// all of them rather than only project_location.
+		packageDirs = selectedPackageDirs(sel.Selected("flutter"))
 	}
 
 	failed := false
@@ -94,20 +99,20 @@ func main() {
 }
 
 // processTestSelection reads the Test Selection step's output for Flutter packages.
-func processTestSelection(path, onEmpty string) (testselection.Decision, error) {
+func processTestSelection(path, onEmpty string) (*testselection.Selection, testselection.Decision, error) {
 	sel, err := testselection.Load(path)
 	if err != nil {
-		return testselection.Decision{}, err
+		return nil, testselection.Decision{}, err
 	}
 	decision, err := testselection.Decide(sel, onEmpty, "flutter")
 	if err != nil {
-		return testselection.Decision{}, err
+		return nil, testselection.Decision{}, err
 	}
 	if sel != nil {
 		fmt.Println()
 		logger.Infof("Test selection: %s", decision.Reason)
 	}
-	return decision, nil
+	return sel, decision, nil
 }
 
 // selectedPackageDirs resolves the selected packages' directories. The Test Selection
