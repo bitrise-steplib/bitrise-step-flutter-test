@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"time"
 
 	"github.com/bitrise-io/go-steputils/v2/export"
 	"github.com/bitrise-io/go-steputils/v2/stepconf"
@@ -46,6 +47,8 @@ func main() {
 
 	stepconf.Print(cfg)
 
+	shadow := startTestSelectionShadow(cfg)
+
 	additionalParams := parser.parseAdditionalParams(cfg.AdditionalParams)
 
 	testPaths := parser.expandTestsPathPattern(cfg.ProjectLocation, cfg.TestsPathPattern)
@@ -55,8 +58,10 @@ func main() {
 	fmt.Println()
 	logger.Infof("Running test")
 
+	started := time.Now()
 	outputBuffer, testErr := test.executeTest(cfg, additionalParams)
 	test.exportTestResults(cfg, outputBuffer)
+	finishTestSelectionShadow(shadow, cfg, time.Since(started))
 
 	if testErr {
 		ir.fail()
