@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"path/filepath"
 
 	"github.com/bitrise-io/go-steputils/v2/export"
 	"github.com/bitrise-io/go-steputils/v2/stepconf"
@@ -10,6 +11,7 @@ import (
 	"github.com/bitrise-io/go-utils/v2/env"
 	"github.com/bitrise-io/go-utils/v2/fileutil"
 	"github.com/bitrise-io/go-utils/v2/log"
+	"github.com/bitrise-steplib/bitrise-step-flutter-test/testselection"
 )
 
 type config struct {
@@ -18,6 +20,8 @@ type config struct {
 	ProjectLocation           string `env:"project_location,dir"`
 	TestResultsDir            string `env:"bitrise_test_result_dir,dir"`
 	GenerateCodeCoverageFiles bool   `env:"generate_code_coverage_files,opt[yes,no]"`
+	TestSelection             string `env:"test_selection"`
+	OnEmptySelection          string `env:"on_empty_selection"`
 }
 
 var logger = log.NewLogger()
@@ -48,17 +52,84 @@ func main() {
 
 	additionalParams := parser.parseAdditionalParams(cfg.AdditionalParams)
 
-	testPaths := parser.expandTestsPathPattern(cfg.ProjectLocation, cfg.TestsPathPattern)
+	sel, decision, err := processTestSelection(cfg.TestSelection, cfg.OnEmptySelection)
+	if err != nil {
+		ir.failWithMessage("Process config: %s", err)
+		return
+	}
+	if decision.Action == testselection.Skip {
+		fmt.Println()
+		logger.Infof("Skipping the test run: %s", decision.Reason)
+		return
+	}
+	packageDirs := []string{cfg.ProjectLocation}
+	switch {
+	case decision.Action == testselection.RunSelected:
+		packageDirs = selectedPackageDirs(decision.Tests)
+	case sel != nil && len(sel.Selected("flutter")) > 0:
+		// A full or shadow run still lists every candidate package, so a monorepo runs
+		// all of them rather than only project_location.
+		packageDirs = selectedPackageDirs(sel.Selected("flutter"))
+	}
 
-	additionalParams = append(additionalParams, testPaths...)
+	failed := false
+	for _, dir := range packageDirs {
+		pkgCfg := cfg
+		pkgCfg.ProjectLocation = dir
+		if len(packageDirs) > 1 {
+			testNameSuffix = filepath.Base(dir)
+		}
 
-	fmt.Println()
-	logger.Infof("Running test")
+		testPaths := parser.expandTestsPathPattern(pkgCfg.ProjectLocation, cfg.TestsPathPattern)
+		params := append(append([]string{}, additionalParams...), testPaths...)
 
-	outputBuffer, testErr := test.executeTest(cfg, additionalParams)
-	test.exportTestResults(cfg, outputBuffer)
+		fmt.Println()
+		logger.Infof("Running test in %s", dir)
 
-	if testErr {
+		outputBuffer, testErr := test.executeTest(pkgCfg, params)
+		test.exportTestResults(pkgCfg, outputBuffer)
+		if testErr {
+			failed = true
+		}
+	}
+
+	if failed {
 		ir.fail()
 	}
+}
+
+// processTestSelection reads the Test Selection step's output for Flutter packages.
+func processTestSelection(path, onEmpty string) (*testselection.Selection, testselection.Decision, error) {
+	sel, err := testselection.Load(path)
+	if err != nil {
+		return nil, testselection.Decision{}, err
+	}
+	decision, err := testselection.Decide(sel, onEmpty, "flutter")
+	if err != nil {
+		return nil, testselection.Decision{}, err
+	}
+	if sel != nil {
+		fmt.Println()
+		logger.Infof("Test selection: %s", decision.Reason)
+	}
+	return sel, decision, nil
+}
+
+// selectedPackageDirs resolves the selected packages' directories. The Test Selection
+// step writes them relative to the repository root.
+func selectedPackageDirs(tests []testselection.Test) []string {
+	root := envRepo.Get("BITRISE_SOURCE_DIR")
+	var dirs []string
+	for _, t := range tests {
+		dir := t.Identifiers.PackageDir
+		if dir == "" {
+			continue
+		}
+		if !filepath.IsAbs(dir) && root != "" {
+			dir = filepath.Join(root, dir)
+		}
+		logger.Printf("- %s (%s)", dir, t.Reason)
+		dirs = append(dirs, dir)
+	}
+	return dirs
 }
