@@ -49,7 +49,7 @@ func deployFileName(name string) string {
 		return name
 	}
 	ext := filepath.Ext(name)
-	return strings.TrimSuffix(name, ext) + "_" + testNameSuffix + ext
+	return strings.TrimSuffix(name, ext) + "_" + strings.ReplaceAll(testNameSuffix, "/", "_") + ext
 }
 
 func (r realTestExporter) exportDeployPath(testResultDeployPath string) {
