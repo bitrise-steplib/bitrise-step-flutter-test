@@ -45,3 +45,13 @@ func TestSelectedPackageDirsKeepsEachPackageOnce(t *testing.T) {
 	})
 	assert.Equal(t, []string{"/src", "/src/packages/core"}, dirs)
 }
+
+func TestPackageLabelUsesThePathFromTheRoot(t *testing.T) {
+	t.Setenv("BITRISE_SOURCE_DIR", "/src")
+	assert.Equal(t, "packages/quick_actions/quick_actions_android/example", packageLabel("/src/packages/quick_actions/quick_actions_android/example"))
+	assert.Equal(t, "app", packageLabel("/elsewhere/app"))
+
+	testNameSuffix = packageLabel("/src/packages/camera/example")
+	defer func() { testNameSuffix = "" }()
+	assert.Equal(t, "results_packages_camera_example.json", deployFileName("results.json"))
+}

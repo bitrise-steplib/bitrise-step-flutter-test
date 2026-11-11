@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"path/filepath"
+	"strings"
 
 	"github.com/bitrise-io/go-steputils/v2/export"
 	"github.com/bitrise-io/go-steputils/v2/stepconf"
@@ -77,7 +78,7 @@ func main() {
 		pkgCfg := cfg
 		pkgCfg.ProjectLocation = dir
 		if len(packageDirs) > 1 {
-			testNameSuffix = filepath.Base(dir)
+			testNameSuffix = packageLabel(dir)
 		}
 
 		testPaths, ok := packageTestPaths(parser, dir, cfg.TestsPathPattern, sel != nil)
@@ -118,6 +119,18 @@ func processTestSelection(path, onEmpty string) (*testselection.Selection, tests
 		logger.Infof("Test selection: %s", decision.Reason)
 	}
 	return sel, decision, nil
+}
+
+// packageLabel names a package in the test report by its path from the repository root:
+// a monorepo has many folders called `example`, so the folder name alone would make
+// their reports overwrite each other.
+func packageLabel(dir string) string {
+	if root := envRepo.Get("BITRISE_SOURCE_DIR"); root != "" {
+		if rel, err := filepath.Rel(root, dir); err == nil && rel != "." && !strings.HasPrefix(rel, "..") {
+			return filepath.ToSlash(rel)
+		}
+	}
+	return filepath.Base(dir)
 }
 
 // packageTestPaths expands the test file pattern in one package. With a test selection,
