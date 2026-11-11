@@ -80,7 +80,12 @@ func main() {
 			testNameSuffix = filepath.Base(dir)
 		}
 
-		testPaths := parser.expandTestsPathPattern(pkgCfg.ProjectLocation, cfg.TestsPathPattern)
+		testPaths, ok := packageTestPaths(parser, dir, cfg.TestsPathPattern, sel != nil)
+		if !ok {
+			fmt.Println()
+			logger.Warnf("Skipping %s: no file matches the test file pattern %s", dir, cfg.TestsPathPattern)
+			continue
+		}
 		params := append(append([]string{}, additionalParams...), testPaths...)
 
 		fmt.Println()
@@ -115,11 +120,25 @@ func processTestSelection(path, onEmpty string) (*testselection.Selection, tests
 	return sel, decision, nil
 }
 
+// packageTestPaths expands the test file pattern in one package. With a test selection,
+// a package where the pattern matches nothing is skipped: an empty path list would make
+// `flutter test` run the package's whole test/ folder instead, for example its unit tests
+// when the pattern points at integration_test.
+func packageTestPaths(p configParser, dir, pattern string, withSelection bool) ([]string, bool) {
+	paths := p.expandTestsPathPattern(dir, pattern)
+	if pattern != "" && withSelection && len(paths) == 0 {
+		return nil, false
+	}
+	return paths, true
+}
+
 // selectedPackageDirs resolves the selected packages' directories. The Test Selection
-// step writes them relative to the repository root.
+// step writes them relative to the repository root, and lists a package once per test
+// unit (tests, integration tests), so each directory is kept once.
 func selectedPackageDirs(tests []testselection.Test) []string {
 	root := envRepo.Get("BITRISE_SOURCE_DIR")
 	var dirs []string
+	seen := map[string]bool{}
 	for _, t := range tests {
 		dir := t.Identifiers.PackageDir
 		if dir == "" {
@@ -128,6 +147,10 @@ func selectedPackageDirs(tests []testselection.Test) []string {
 		if !filepath.IsAbs(dir) && root != "" {
 			dir = filepath.Join(root, dir)
 		}
+		if seen[dir] {
+			continue
+		}
+		seen[dir] = true
 		logger.Printf("- %s (%s)", dir, t.Reason)
 		dirs = append(dirs, dir)
 	}
